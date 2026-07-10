@@ -1,0 +1,27 @@
+# Binaries
+agent/build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+agent/coverage.out
+agent/coverage.raw
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Agent runtime state
+.omo/
+
+# Dependency directories
+agent/vendor/
