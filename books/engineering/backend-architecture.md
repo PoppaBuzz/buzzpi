@@ -18,7 +18,7 @@
 
 ```
                 ┌─────────────────────────────────────────┐
-                │         BuzzPi Cloud (buzzpi.dev)        │
+                │         BuzzPi Cloud (jphat.net/buzzpi)     │
                 │                                          │
                 │  ┌───────────┐  ┌───────────┐           │
                 │  │  Registry │  │  Signaling │           │
@@ -73,8 +73,8 @@ The relay does not process or store message contents. It multiplexes signaling m
 
 **Purpose:** NAT traversal fallback when direct P2P fails. Uses [coturn](https://github.com/coturn/coturn) as a subprocess or sidecar.
 
-- STUN: `stun:stun.buzzpi.dev:3478`
-- TURN: `turn:turn.buzzpi.dev:3478` (TCP/UDP)
+- STUN: `stun:jphat.net/buzzpi/stun:3478`
+- TURN: `turn:jphat.net/buzzpi/turn:3478` (TCP/UDP)
 - TURN credentials: time-limited (REST API authentication)
 
 ---
@@ -385,7 +385,7 @@ relay:
 
 turn:
   enabled: true
-  realm: buzzpi.dev
+  realm: jphat.net
   secret: "${TURN_SECRET}"             # HMAC secret for coturn REST auth
   credential_ttl: 24h
   coturn_binary: /usr/bin/coturn

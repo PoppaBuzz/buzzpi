@@ -16,18 +16,31 @@ import (
 // HandlerFunc processes a BPP method request and returns a result or error.
 type HandlerFunc func(ctx context.Context, params json.RawMessage) (interface{}, error)
 
+// MiddlewareFunc wraps a handler, with access to the method name.
+// Call next to continue the chain; return to short-circuit.
+type MiddlewareFunc func(ctx context.Context, method string, params json.RawMessage, next HandlerFunc) (interface{}, error)
+
 // MethodInfo describes a registered method.
 type MethodInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	AuthLevel   string `json:"auth_level,omitempty"`
 }
+
+// Auth levels for method access control.
+const (
+	AuthPublic = "public"
+	AuthPaired = "paired"
+	AuthAdmin  = "admin"
+)
 
 // Manager routes BPP messages to registered method handlers.
 type Manager struct {
-	mu       sync.RWMutex
-	methods  map[string]HandlerFunc
-	handlers []HandlerFunc // middleware chain (auth, logging, etc.)
-	log      *slog.Logger
+	mu         sync.RWMutex
+	methods    map[string]HandlerFunc
+	methodInfo map[string]MethodInfo
+	middleware []MiddlewareFunc
+	log        *slog.Logger
 }
 
 // NewManager creates a new Engine Manager.
@@ -36,8 +49,9 @@ func NewManager(log *slog.Logger) *Manager {
 		log = slog.Default()
 	}
 	return &Manager{
-		methods: make(map[string]HandlerFunc),
-		log:     log.With("component", "engine"),
+		methods:    make(map[string]HandlerFunc),
+		methodInfo: make(map[string]MethodInfo),
+		log:        log.With("component", "engine"),
 	}
 }
 
@@ -46,15 +60,25 @@ func (m *Manager) RegisterMethod(method string, handler HandlerFunc) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.methods[method] = handler
+	m.methodInfo[method] = MethodInfo{Name: method}
 	m.log.Info("method registered", "method", method)
 }
 
-// RegisterHandler adds a middleware handler that wraps all method calls.
-// Middleware is executed in registration order before the method handler.
-func (m *Manager) RegisterHandler(h HandlerFunc) {
+// SetAuthLevel sets the required auth level for a method.
+func (m *Manager) SetAuthLevel(method, level string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.handlers = append(m.handlers, h)
+	if info, ok := m.methodInfo[method]; ok {
+		info.AuthLevel = level
+		m.methodInfo[method] = info
+	}
+}
+
+// Use adds a middleware to the chain. Middleware runs in registration order.
+func (m *Manager) Use(mw MiddlewareFunc) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.middleware = append(m.middleware, mw)
 }
 
 // Handle processes an incoming BPP request and returns a response envelope.
@@ -69,10 +93,8 @@ func (m *Manager) Handle(ctx context.Context, env *bpp.Envelope) (*bpp.Envelope,
 			fmt.Sprintf("unknown method: %s", env.Method)), nil
 	}
 
-	// Run middleware chain
-	handler = m.wrapMiddleware(handler)
-
-	result, err := handler(ctx, env.Params)
+	// Run middleware chain with method context
+	result, err := m.runMiddleware(ctx, env.Method, env.Params, handler)
 	if err != nil {
 		m.log.Error("method handler error",
 			"method", env.Method,
@@ -84,28 +106,31 @@ func (m *Manager) Handle(ctx context.Context, env *bpp.Envelope) (*bpp.Envelope,
 	return bpp.NewResponse(env, result)
 }
 
-// wrapMiddleware wraps the handler with all registered middleware.
-func (m *Manager) wrapMiddleware(final HandlerFunc) HandlerFunc {
+// runMiddleware builds and executes the middleware chain for a given method.
+func (m *Manager) runMiddleware(ctx context.Context, method string, params json.RawMessage, final HandlerFunc) (interface{}, error) {
 	m.mu.RLock()
-	chain := make([]HandlerFunc, len(m.handlers))
-	copy(chain, m.handlers)
+	mws := make([]MiddlewareFunc, len(m.middleware))
+	copy(mws, m.middleware)
 	m.mu.RUnlock()
 
-	// Apply middleware in reverse order so they execute in forward order
-	wrapped := final
-	for i := len(chain) - 1; i >= 0; i-- {
-		mw := chain[i]
-		next := wrapped
-		wrapped = func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-			return mw(ctx, params)
+	var chain HandlerFunc
+	chain = final
+	for i := len(mws) - 1; i >= 0; i-- {
+		mw := mws[i]
+		next := chain
+		chain = func(ctx context.Context, p json.RawMessage) (interface{}, error) {
+			return mw(ctx, method, p, next)
 		}
-		_ = next // middleware chains into next
-		// TODO: Proper middleware chaining
-		// wrapped = func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-		//     return mw(ctx, params, next)
-		// }
 	}
-	return wrapped
+	return chain(ctx, params)
+}
+
+// MethodInfo returns the registered info for a method.
+func (m *Manager) MethodInfo(method string) (MethodInfo, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	info, ok := m.methodInfo[method]
+	return info, ok
 }
 
 // ListMethods returns all registered methods with their info.
@@ -114,8 +139,8 @@ func (m *Manager) ListMethods() []MethodInfo {
 	defer m.mu.RUnlock()
 
 	info := make([]MethodInfo, 0, len(m.methods))
-	for name := range m.methods {
-		info = append(info, MethodInfo{Name: name})
+	for _, mi := range m.methodInfo {
+		info = append(info, mi)
 	}
 	return info
 }

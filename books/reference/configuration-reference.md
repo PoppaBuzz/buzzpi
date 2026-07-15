@@ -37,7 +37,7 @@ runtime:
 ```yaml
 network:
   # WebSocket signaling server
-  relay_url: "wss://relay.buzzpi.dev/v1"
+  relay_url: "wss://jphat.net/buzzpi/relay/v1"
 
   # mDNS service advertisement
   mdns:
@@ -50,7 +50,7 @@ network:
   ice_servers:
     - urls: ["stun:stun.l.google.com:19302"]
     - urls: ["stun:stun1.l.google.com:19302"]
-    - urls: ["turn:turn.buzzpi.dev:3478"]
+    - urls: ["turn:jphat.net/buzzpi/turn:3478"]
       username: "${TURN_USERNAME}"     # From env var
       credential: "${TURN_CREDENTIAL}" # From env var
 ```
@@ -182,7 +182,7 @@ plugins:
   # Plugin sources (for install)
   sources:
     - type: "registry"
-      url: "https://plugins.buzzpi.dev"
+      url: "https://jphat.net/buzzpi/plugins"
 
   # Resource limits per plugin
   limits:
@@ -210,7 +210,7 @@ updates:
   channel: "stable"
 
   # Update URL for version manifest
-  manifest_url: "https://updates.buzzpi.dev/runtime.json"
+  manifest_url: "https://jphat.net/buzzpi/updates/runtime.json"
 
   # Automatic update installation (requires restart)
   auto_install: false
@@ -244,7 +244,7 @@ runtime:
   friendly_name: "Kitchen Pi"
   log_level: "info"
 network:
-  relay_url: "wss://relay.buzzpi.dev/v1"
+  relay_url: "wss://jphat.net/buzzpi/relay/v1"
 services:
   terminal:
     enabled: true
@@ -289,7 +289,7 @@ buzzpi-runtime config --defaults
 | `JWT_SECRET` | — | JWT signing secret (required) |
 | `DATABASE_URL` | `postgres://localhost/buzzpi` | PostgreSQL connection string |
 | `TURN_SECRET` | — | HMAC secret for TURN credentials |
-| `TURN_REALM` | `buzzpi.dev` | TURN realm |
+| `TURN_REALM` | `jphat.net` | TURN realm |
 | `PORT` | `8080` | HTTP server port |
 | `LOG_LEVEL` | `info` | Log level |
 | `RATE_LIMIT_ENABLED` | `true` | Enable rate limiting |
@@ -299,8 +299,8 @@ buzzpi-runtime config --defaults
 
 | Property | Method | Default | Description |
 |----------|--------|---------|-------------|
-| `buzzpi.relay_url` | BuildConfig | `wss://relay.buzzpi.dev/v1` | Signaling server URL |
-| `buzzpi.api_url` | BuildConfig | `https://api.buzzpi.dev/v1` | REST API base URL |
+| `buzzpi.relay_url` | BuildConfig | `wss://jphat.net/buzzpi/relay/v1` | Signaling server URL |
+| `buzzpi.api_url` | BuildConfig | `https://jphat.net/buzzpi/api/v1` | REST API base URL |
 | `buzzpi.stun_servers` | BuildConfig | `["stun:stun.l.google.com:19302"]` | STUN servers |
 | `buzzpi.turn_servers` | BuildConfig | `[]` | TURN servers |
 | `buzzpi.mdns_enabled` | BuildConfig | `true` | Enable mDNS discovery |
@@ -344,7 +344,7 @@ relay:
 # TURN server
 turn:
   enabled: true
-  realm: buzzpi.dev
+  realm: jphat.net
   secret: "${TURN_SECRET}"
   credential_ttl: 24h
   coturn_binary: /usr/bin/coturn

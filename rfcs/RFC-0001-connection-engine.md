@@ -141,7 +141,7 @@ func (e *ConnectionEngine) selectTransport(ctx context.Context) error {
         ICEServers: []webrtc.ICEServer{
             {URLs: []string{"stun:stun.l.google.com:19302"}},
             {
-                URLs:       []string{"turn:turn.buzzpi.dev:3478"},
+                URLs:       []string{"turn:jphat.net/buzzpi/turn:3478"},
                 Username:   e.turnCreds.Username,
                 Credential: e.turnCreds.Credential,
             },

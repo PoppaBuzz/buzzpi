@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BuzzPi launcher icon foreground: honeycomb hexagon with bee motif -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer honeycomb hexagon -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M54,19L84.36,36.5L84.36,71.5L54,89L23.64,71.5L23.64,36.5Z" />
+
+    <!-- Inner honeycomb hexagon ring -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.3"
+        android:pathData="M54,28L73.68,39.5L73.68,62.5L54,74L34.32,62.5L34.32,39.5Z" />
+
+    <!-- Bee body (ellipse) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,56C45,48.5 63,48.5 63,56C63,63.5 45,63.5 45,56Z" />
+
+    <!-- Bee stripe 1 -->
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M45,52L52,52L52,53L45,53Z" />
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M56,52L63,52L63,53L56,53Z" />
+
+    <!-- Bee stripe 2 -->
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M44,56L51,56L51,57L44,57Z" />
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M57,56L64,56L64,57L57,57Z" />
+
+    <!-- Bee stripe 3 -->
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M45,60L52,60L52,61L45,61Z" />
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M56,60L63,60L63,61L56,61Z" />
+
+    <!-- Left wing -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.85"
+        android:pathData="M40,47A7,6 0,1,1 42,46" />
+
+    <!-- Right wing -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.85"
+        android:pathData="M66,47A7,6 0,1,1 68,46" />
+
+    <!-- Stinger -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,64L54,69L56,66Z" />
+
+</vector>

@@ -11,7 +11,7 @@ WebSocket is the primary transport for control-plane communication between clien
 ### Endpoint
 
 ```
-wss://relay.buzzpi.dev/ws
+wss://jphat.net/buzzpi/relay/ws
 ```
 
 All WebSocket connections MUST use WSS (TLS over WebSocket). Plain WS is never used in production.
@@ -20,9 +20,9 @@ All WebSocket connections MUST use WSS (TLS over WebSocket). Plain WS is never u
 
 The WebSocket connection authenticates using one of:
 
-1. **Session token** (client): `wss://relay.buzzpi.dev/ws?token=<session_token>`
-2. **Device token** (Runtime): `wss://relay.buzzpi.dev/ws?device_id=<device_id>&token=<device_token>`
-3. **API token** (CLI): `wss://relay.buzzpi.dev/ws?token=<api_token>`
+1. **Session token** (client): `wss://jphat.net/buzzpi/relay/ws?token=<session_token>`
+2. **Device token** (Runtime): `wss://jphat.net/buzzpi/relay/ws?device_id=<device_id>&token=<device_token>`
+3. **API token** (CLI): `wss://jphat.net/buzzpi/relay/ws?token=<api_token>`
 
 Authentication happens immediately after the WebSocket handshake. The server validates the token and, if invalid, closes the connection with code 4001.
 
@@ -70,7 +70,7 @@ The server processes each message independently and sends separate responses. Ba
 
 ### Open
 
-1. Client/device connects to `wss://relay.buzzpi.dev/ws` with authentication token
+1. Client/device connects to `wss://jphat.net/buzzpi/relay/ws` with authentication token
 2. Server validates token
 3. Server sends `relay.connected` message:
    ```json

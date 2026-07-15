@@ -298,7 +298,7 @@ BPP: 1.0
 
 ---
 
-## Install Script (`get.buzzpi.dev`)
+## Install Script (`jphat.net/buzzpi/install`)
 
 The install script supports the following environment variables:
 
@@ -313,13 +313,13 @@ The install script supports the following environment variables:
 
 ```bash
 # Install the latest stable version
-curl -sS https://get.buzzpi.dev | bash
+curl -sS https://jphat.net/buzzpi/install | bash
 
 # Install a specific version
-BUZZPI_VERSION=v0.1.0 curl -sS https://get.buzzpi.dev | bash
+BUZZPI_VERSION=v0.1.0 curl -sS https://jphat.net/buzzpi/install | bash
 
 # Install without starting the service
-BUZZPI_NO_START=1 curl -sS https://get.buzzpi.dev | bash
+BUZZPI_NO_START=1 curl -sS https://jphat.net/buzzpi/install | bash
 ```
 
 ---

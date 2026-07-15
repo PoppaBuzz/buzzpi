@@ -90,7 +90,7 @@ After device authentication (during pairing), the user receives a session token 
 The session token is sent as a header or query parameter on WebSocket connections to the Relay Server:
 
 ```
-WebSocket URL: wss://relay.buzzpi.dev/ws?token=<session_token>
+WebSocket URL: wss://jphat.net/buzzpi/relay/ws?token=<session_token>
 ```
 
 Or as a header:

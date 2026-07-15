@@ -49,8 +49,8 @@ When P2P connectivity fails, traffic routes through the BuzzPi TURN server:
   "ice_servers": [
     {
       "urls": [
-        "turn:turn.buzzpi.dev:3478",
-        "turn:turn.buzzpi.dev:3478?transport=tcp"
+        "turn:jphat.net/buzzpi/turn:3478",
+        "turn:jphat.net/buzzpi/turn:3478?transport=tcp"
       ],
       "username": "<session_id>",
       "credential": "<temporary_turn_credential>"

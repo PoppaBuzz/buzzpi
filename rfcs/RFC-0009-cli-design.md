@@ -259,7 +259,7 @@ pairing:
   pin_timeout: 120s
 
 plugins:
-  registry_url: https://plugins.buzzpi.dev
+  registry_url: https://jphat.net/buzzpi/plugins
   install_dir: /var/lib/buzzpi/plugins
 
 logging:

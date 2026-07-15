@@ -16,17 +16,17 @@ All well-known ports, URLs, identifiers, and protocol constants.
 
 | Environment | URL | Purpose |
 |-------------|-----|---------|
-| Production | `wss://relay.buzzpi.dev/ws` | Primary relay server |
-| Staging | `wss://relay-staging.buzzpi.dev/ws` | Pre-production testing |
+| Production | `wss://jphat.net/buzzpi/relay/ws` | Primary relay server |
+| Staging | `wss://jphat.net/buzzpi/relay-staging/ws` | Pre-production testing |
 | Development | `ws://localhost:8080/ws` | Local development |
 
 ## TURN URLs
 
 | Environment | URL |
 |-------------|-----|
-| Production | `turn:turn.buzzpi.dev:3478` |
-| Production (TLS) | `turn:turn.buzzpi.dev:5349?transport=tcp` |
-| Staging | `turn:turn-staging.buzzpi.dev:3478` |
+| Production | `turn:jphat.net/buzzpi/turn:3478` |
+| Production (TLS) | `turn:jphat.net/buzzpi/turn:5349?transport=tcp` |
+| Staging | `turn:jphat.net/buzzpi/turn-staging:3478` |
 
 ## STUN Servers
 
@@ -39,8 +39,8 @@ All well-known ports, URLs, identifiers, and protocol constants.
 
 | Service | URL |
 |---------|-----|
-| Extension Registry | `https://registry.buzzpi.dev/v1` |
-| Update Server | `https://releases.buzzpi.dev/runtime/latest` |
+| Extension Registry | `https://jphat.net/buzzpi/registry/v1` |
+| Update Server | `https://jphat.net/buzzpi/releases/runtime/latest` |
 
 ## Message Envelope Constants
 

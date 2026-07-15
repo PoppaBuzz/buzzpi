@@ -153,7 +153,7 @@ When a new maintainer is appointed:
 
 ## Security Incident Response
 
-1. **Receive report** — Via security@buzzpi.dev (private)
+1. **Receive report** — Via security.buzzpi@jphat.net (private)
 2. **Triage** — Assess severity within 4 hours
 3. **Fix** — Develop fix in a private fork
 4. **Release** — Ship as a hotfix with release notes after the fix is live

@@ -233,7 +233,7 @@ Scenario: Connect via relay
 
 ### NFR5: Developer Experience
 
-- Single-command Runtime install: `curl -sS https://get.buzzpi.dev | bash`
+- Single-command Runtime install: `curl -sS https://jphat.net/buzzpi/install | bash`
 - Runtime logs visible via `journalctl -u buzzpi-runtime`
 - Runtime configuration via `/etc/buzzpi/config.yaml`
 - Android app installable via APK sideload (debug build)

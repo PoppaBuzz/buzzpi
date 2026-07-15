@@ -1,6 +1,3 @@
-// Package ws provides WebSocket server and client implementations
-// for the BuzzPi Runtime. The WebSocket server accepts BPP connections
-// from clients, and the client connects to the Cloud Relay.
 package ws
 
 import (
@@ -13,6 +10,16 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+// Context keys for per-connection values passed through the request context.
+type ContextKey string
+
+const (
+	// ContextKeyConnID holds the connection ID string.
+	ContextKeyConnID ContextKey = "ws_conn_id"
+	// ContextKeyConn holds the *Connection value.
+	ContextKeyConn ContextKey = "ws_conn"
 )
 
 var upgrader = websocket.Upgrader{
@@ -134,6 +141,10 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	count := len(s.conns)
 	s.mu.Unlock()
 
+	// Create per-connection context so handlers can identify the connection
+	ctx := context.WithValue(r.Context(), ContextKeyConnID, c.ID)
+	ctx = context.WithValue(ctx, ContextKeyConn, c)
+
 	s.log.Info("client connected",
 		"id", c.ID,
 		"remote", c.RemoteAddr,
@@ -141,7 +152,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if s.handler != nil {
-		s.handler.OnConnect(r.Context(), c)
+		s.handler.OnConnect(ctx, c)
 	}
 
 	defer func() {
@@ -151,7 +162,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		s.mu.Unlock()
 
 		if s.handler != nil {
-			s.handler.OnDisconnect(r.Context(), c)
+			s.handler.OnDisconnect(ctx, c)
 		}
 
 		conn.Close()
@@ -171,7 +182,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if s.handler != nil {
-			resp, err := s.handler.HandleMessage(r.Context(), message)
+			resp, err := s.handler.HandleMessage(ctx, message)
 			if err != nil {
 				s.log.Error("message handler error", "error", err)
 				continue

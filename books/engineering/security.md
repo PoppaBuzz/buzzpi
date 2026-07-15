@@ -8,9 +8,9 @@ BuzzPi takes security seriously. The project handles device access, remote conne
 
 If you discover a security vulnerability in BuzzPi, please report it privately.
 
-**Email**: security@buzzpi.dev
+**Email**: security.buzzpi@jphat.net
 
-**PGP Key**: Available at https://buzzpi.dev/security/pgp-key.asc
+**PGP Key**: Available at https://jphat.net/security/pgp-key.asc
 
 Please include the following information in your report:
 
@@ -85,4 +85,4 @@ A formal bug bounty program is not yet available. This will be updated when one 
 
 ## Security.txt
 
-See https://buzzpi.dev/.well-known/security.txt for the latest security contact information.
+See https://jphat.net/.well-known/security.txt for the latest security contact information.

@@ -90,8 +90,8 @@ jobs:
           go tool cover -func=coverage.out | tail -1
           COVER=$(go tool cover -func=coverage.out | grep 'total:' | awk '{print $3}' | tr -d '%')
           echo "Total coverage: ${COVER}%"
-          if (( $(echo "$COVER < 50" | bc -l) )); then
-            echo "FAIL: Coverage ${COVER}% is below 50% threshold"
+          if (( $(echo "$COVER < 70" | bc -l) )); then
+            echo "FAIL: Coverage ${COVER}% is below 70% threshold"
             exit 1
           fi
           echo "PASS: Coverage ${COVER}% meets threshold"

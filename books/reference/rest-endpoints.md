@@ -1,6 +1,6 @@
 # REST API Endpoints
 
-**Every backend API endpoint with request/response schemas.** Base URL: `https://api.buzzpi.dev/v1`
+**Every backend API endpoint with request/response schemas.** Base URL: `https://jphat.net/buzzpi/api/v1`
 
 ---
 

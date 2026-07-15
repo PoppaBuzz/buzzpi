@@ -158,7 +158,7 @@ Services are defined by Extensions (see extensions manager).
 
 ### Update Mechanism
 
-1. Runtime polls update server daily: `GET https://releases.buzzpi.dev/runtime/latest`
+1. Runtime polls update server daily: `GET https://jphat.net/buzzpi/releases/runtime/latest`
 2. If newer version available, downloads binary to `/tmp/buzzpi-runtime-update`
 3. Verifies GPG signature
 4. Replaces current binary atomically (rename)

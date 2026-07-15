@@ -112,7 +112,7 @@ BUZZPI_[COMPONENT]_[KEY]
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `BUZZPI_PLUGIN_REGISTRY_URL` | url | `https://plugins.buzzpi.dev` | Plugin registry URL |
+| `BUZZPI_PLUGIN_REGISTRY_URL` | url | `https://jphat.net/buzzpi/plugins` | Plugin registry URL |
 | `BUZZPI_PLUGIN_ALLOW_UNSIGNED` | bool | `false` | Allow unsigned plugins |
 | `BUZZPI_PLUGIN_VERIFY_SIGNATURE` | bool | `true` | Verify plugin signatures |
 | `BUZZPI_PLUGIN_SANDBOX_ENABLED` | bool | `true` | Enable process sandboxing |

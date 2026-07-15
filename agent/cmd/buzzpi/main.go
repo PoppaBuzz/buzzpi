@@ -14,10 +14,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/buzzpi/agent/internal/version"
@@ -31,13 +34,14 @@ func main() {
 Usage:
   buzzpi <command> [arguments]
 
-Commands:
+ Commands:
   discover          Scan for BuzzPi devices on the local network
+  devices           List paired devices
   device            Get device information or statistics
   pair              Pair with a device
   unpair            Unpair from a device
+  terminal          Open a terminal session with a device
   session           Manage sessions
-  plugin            Manage plugins
   version           Show version information
   help              Show help for a command
 
@@ -68,16 +72,18 @@ Use "buzzpi help <command>" for more information about a command.
 	switch args[0] {
 	case "discover":
 		cmdDiscover(ctx, args[1:])
+	case "devices":
+		cmdDevices(ctx, args[1:])
 	case "device":
 		cmdDevice(ctx, args[1:])
 	case "pair":
 		cmdPair(ctx, args[1:])
 	case "unpair":
 		cmdUnpair(ctx, args[1:])
+	case "terminal":
+		cmdTerminal(ctx, args[1:])
 	case "session":
 		cmdSession(ctx, args[1:])
-	case "plugin":
-		cmdPlugin(ctx, args[1:])
 	case "version":
 		fmt.Println(version.Info())
 	case "help":
@@ -87,6 +93,36 @@ Use "buzzpi help <command>" for more information about a command.
 		flag.Usage()
 		os.Exit(1)
 	}
+}
+
+// ── devices ─────────────────────────────────────────────────────────────────
+
+func cmdDevices(ctx context.Context, args []string) {
+	state, err := loadClientState()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	devices := state.listDevices()
+	if len(devices) == 0 {
+		fmt.Println("No paired devices.")
+		fmt.Println()
+		fmt.Println("Pair with a device:")
+		fmt.Println("  buzzpi discover          # find devices on your network")
+		fmt.Println("  buzzpi pair <device_id>  # pair with a device")
+		return
+	}
+
+	fmt.Println()
+	fmt.Printf("%-24s %-24s %-16s %-6s %s\n", "DEVICE ID", "NAME", "ADDRESS", "PORT", "PAIRED")
+	fmt.Println("──────────────────────────────────────────────────────────────────────────────────────────────")
+	for _, d := range devices {
+		pairedAt, _ := time.Parse(time.RFC3339, d.PairedAt)
+		fmt.Printf("%-24s %-24s %-16s %-6d %s\n",
+			d.DeviceID, d.DeviceName, d.Address, d.Port, pairedAt.Format("2006-01-02"))
+	}
+	fmt.Printf("\n%d paired device(s)\n", len(devices))
 }
 
 // ── discover ────────────────────────────────────────────────────────────────
@@ -211,6 +247,152 @@ func printDeviceStats(ctx context.Context, args []string) {
 	os.Exit(1)
 }
 
+// ── terminal ────────────────────────────────────────────────────────────────
+
+func cmdTerminal(ctx context.Context, args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: buzzpi terminal <device_id>")
+		os.Exit(1)
+	}
+
+	deviceID := args[0]
+
+	devInfo := discoverDevice(ctx, deviceID)
+	if devInfo == nil {
+		os.Exit(1)
+	}
+
+	state, err := loadClientState()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	dev, ok := state.getDevice(deviceID)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Error: device %q is not paired\n", deviceID)
+		fmt.Fprintln(os.Stderr, "Run 'buzzpi pair <device_id>' first")
+		os.Exit(1)
+	}
+
+	fmt.Printf("Connecting to %s (%s)...\n", dev.DeviceName, deviceID)
+
+	c := bpp.NewClient(deviceID, devInfo.Addr.String(), devInfo.Port)
+	if err := c.Connect(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: connection failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer c.Close()
+
+	fmt.Print("Authenticating... ")
+	accept, err := c.Handshake(ctx, dev.SessionToken)
+	if err != nil {
+		if authErr, ok := err.(*bpp.HandshakeAuthError); ok {
+			fmt.Printf("\nSession expired for device %q.\n", deviceID)
+			fmt.Printf("Please re-pair: buzzpi pair %s (PIN: %s)\n", deviceID, authErr.PIN)
+		} else {
+			fmt.Printf("\nHandshake failed: %v\n", err)
+		}
+		os.Exit(1)
+	}
+	fmt.Println("OK")
+
+	sesCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+
+	fmt.Print("Opening terminal session... ")
+	openResp, err := c.Call(sesCtx, "terminal.open", map[string]string{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nError: terminal.open failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	var openResult struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(openResp.Result, &openResult); err != nil {
+		fmt.Fprintf(os.Stderr, "\nError: parse terminal.open response: %v\n", err)
+		os.Exit(1)
+	}
+	sessionID := openResult.SessionID
+	fmt.Printf("OK (session: %s)\n", sessionID)
+	fmt.Println()
+	fmt.Printf("Terminal connected to %s. Type commands, Ctrl+C to exit.\n", accept.DeviceName)
+	fmt.Println()
+
+	stdinCh := make(chan string, 10)
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			select {
+			case stdinCh <- scanner.Text():
+			case <-sesCtx.Done():
+				return
+			}
+		}
+	}()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-sigCh:
+				fmt.Println("\nClosing terminal...")
+				cancel()
+				return
+			case <-sesCtx.Done():
+				return
+			case line := <-stdinCh:
+				env, err := c.Call(sesCtx, "terminal.input", map[string]interface{}{
+					"session_id": sessionID,
+					"data":       []byte(line + "\n"),
+				})
+				if err != nil {
+					select {
+					case <-sesCtx.Done():
+						return
+					default:
+						fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
+					}
+					return
+				}
+
+				var result struct {
+					Output []byte `json:"output"`
+				}
+				if env.Result != nil {
+					if err := json.Unmarshal(env.Result, &result); err != nil {
+						fmt.Fprintf(os.Stderr, "\nParse error: %v\n", err)
+						continue
+					}
+				}
+
+				if len(result.Output) > 0 {
+					os.Stdout.Write(result.Output)
+				}
+			}
+		}
+	}()
+
+	<-done
+
+	// Clean up the terminal session
+	fmt.Print("Closing terminal session... ")
+	closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer closeCancel()
+	if _, err := c.Call(closeCtx, "terminal.close", map[string]string{
+		"session_id": sessionID,
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "\nWarning: terminal.close: %v\n", err)
+	} else {
+		fmt.Println("OK")
+	}
+}
+
 // ── pair / unpair ───────────────────────────────────────────────────────────
 
 func cmdPair(ctx context.Context, args []string) {
@@ -221,31 +403,93 @@ func cmdPair(ctx context.Context, args []string) {
 
 	deviceID := args[0]
 
-	browser := bpp.NewBrowser()
-	devices, err := browser.Discover(ctx, 3*time.Second)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: discovery failed: %v\n", err)
+	devInfo := discoverDevice(ctx, deviceID)
+	if devInfo == nil {
 		os.Exit(1)
 	}
 
-	for _, d := range devices {
-		if d.DeviceID == deviceID {
-			fmt.Printf("Initiating pairing with:\n")
-			fmt.Printf("  Device ID:    %s\n", d.DeviceID)
-			fmt.Printf("  Name:         %s\n", d.FriendlyName)
-			fmt.Printf("  Address:      %s\n", d.Addr)
-			fmt.Printf("  Port:         %d\n", d.Port)
-			fmt.Printf("  Platform:     %s\n", d.Platform)
-			fmt.Println()
-			fmt.Printf("Connect to %s:%d via WebSocket and complete the BPP handshake.\n", d.Addr, d.Port)
-			fmt.Println("The protocol supports PIN-based authentication (see bpp.Handshake).")
-			return
-		}
+	state, err := loadClientState()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 
-	fmt.Fprintf(os.Stderr, "Error: device %q not found on local network\n", deviceID)
-	fmt.Fprintln(os.Stderr, "Run 'buzzpi discover' to find available devices")
-	os.Exit(1)
+	fmt.Printf("Initiating pairing with:\n")
+	fmt.Printf("  Device ID:    %s\n", devInfo.DeviceID)
+	fmt.Printf("  Name:         %s\n", devInfo.FriendlyName)
+	fmt.Printf("  Address:      %s\n", devInfo.Addr.String())
+	fmt.Printf("  Port:         %d\n", devInfo.Port)
+	fmt.Println()
+
+	c := bpp.NewClient(deviceID, devInfo.Addr.String(), devInfo.Port)
+	if err := c.Connect(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: connection failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer c.Close()
+
+	initParams := map[string]string{"device_id": deviceID}
+	initResp, err := c.Call(ctx, "pair.initiate", initParams)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: initiate failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	var initResult struct {
+		PIN       string `json:"pin"`
+		SessionID string `json:"session_id"`
+		DeviceID  string `json:"device_id"`
+		ExpiresAt int64  `json:"expires_at"`
+	}
+	if err := json.Unmarshal(initResp.Result, &initResult); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: parse initiate response: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Pairing PIN: %s\n", initResult.PIN)
+	fmt.Printf("This PIN expires in 2 minutes.\n")
+	fmt.Println()
+
+	fmt.Print("Press Enter to confirm pairing with this PIN...")
+	fmt.Scanln()
+
+	verifyParams := map[string]interface{}{
+		"session_id":        initResult.SessionID,
+		"pin":               initResult.PIN,
+		"client_public_key": "",
+		"client_name":       "buzzpi-cli",
+	}
+	verifyResp, err := c.Call(ctx, "pair.verify", verifyParams)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: verify failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	var verifyResult struct {
+		SessionToken string `json:"session_token"`
+		ExpiresAt    int64  `json:"expires_at"`
+		DeviceID     string `json:"device_id"`
+	}
+	if err := json.Unmarshal(verifyResp.Result, &verifyResult); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: parse verify response: %v\n", err)
+		os.Exit(1)
+	}
+
+	state.addDevice(pairedDevice{
+		DeviceID:     initResult.DeviceID,
+		DeviceName:   devInfo.FriendlyName,
+		Address:      devInfo.Addr.String(),
+		Port:         devInfo.Port,
+		SessionToken: verifyResult.SessionToken,
+		PairedAt:     time.Now().Format(time.RFC3339),
+	})
+	if err := state.save(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to save pairing state: %v\n", err)
+	}
+
+	fmt.Println("Pairing successful!")
+	fmt.Printf("  Session token: %s\n", verifyResult.SessionToken)
+	fmt.Printf("  Expires at:    %s\n", time.Unix(verifyResult.ExpiresAt, 0).Format(time.RFC3339))
 }
 
 func cmdUnpair(ctx context.Context, args []string) {
@@ -256,74 +500,142 @@ func cmdUnpair(ctx context.Context, args []string) {
 
 	deviceID := args[0]
 
+	state, err := loadClientState()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	dev, ok := state.getDevice(deviceID)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Error: device %q not found in local state\n", deviceID)
+		fmt.Fprintln(os.Stderr, "Run 'buzzpi pair <device_id>' first")
+		os.Exit(1)
+	}
+
+	c := bpp.NewClient(deviceID, dev.Address, dev.Port)
+	if err := c.Connect(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: connection failed: %v\n", err)
+		fmt.Println("Removing pairing from local state only.")
+	} else {
+		unpairParams := map[string]string{
+			"session_token": dev.SessionToken,
+			"device_id":     deviceID,
+		}
+		c.Call(ctx, "pair.unpair", unpairParams)
+		c.Close()
+	}
+
+	state.removeDevice(deviceID)
+	if err := state.save(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to save state: %v\n", err)
+	}
+
+	fmt.Printf("Unpaired from %s (%s)\n", dev.DeviceName, deviceID)
+}
+
+func discoverDevice(ctx context.Context, deviceID string) *bpp.DiscoveredDevice {
 	browser := bpp.NewBrowser()
 	devices, err := browser.Discover(ctx, 3*time.Second)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: discovery failed: %v\n", err)
-		os.Exit(1)
+		return nil
 	}
 
 	for _, d := range devices {
 		if d.DeviceID == deviceID {
-			fmt.Printf("Unpairing from %s (%s)...\n", d.FriendlyName, deviceID)
-			fmt.Println("Send unpair request to the device to remove the pairing.")
-			return
+			return &d
 		}
 	}
 
 	fmt.Fprintf(os.Stderr, "Error: device %q not found on local network\n", deviceID)
 	fmt.Fprintln(os.Stderr, "Run 'buzzpi discover' to find available devices")
-	os.Exit(1)
+	return nil
 }
 
 // ── session ─────────────────────────────────────────────────────────────────
 
 func cmdSession(ctx context.Context, args []string) {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "Usage: buzzpi session list|revoke <device_id>")
+	if len(args) < 2 {
+		fmt.Fprintln(os.Stderr, "Usage: buzzpi session list <device_id>")
 		os.Exit(1)
 	}
+
 	switch args[0] {
 	case "list":
-		fmt.Println("Active sessions (not yet implemented)")
-	case "revoke":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: buzzpi session revoke <device_id>")
-			os.Exit(1)
-		}
-		fmt.Printf("Revoking sessions for: %s (not yet implemented)\n", args[1])
+		cmdSessionList(ctx, args[1])
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unknown subcommand: %s\n", args[0])
+		fmt.Fprintln(os.Stderr, "Usage: buzzpi session list <device_id>")
 		os.Exit(1)
 	}
 }
 
-// ── plugin ──────────────────────────────────────────────────────────────────
+func cmdSessionList(ctx context.Context, deviceID string) {
+	state, err := loadClientState()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 
-func cmdPlugin(ctx context.Context, args []string) {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "Usage: buzzpi plugin list|install|uninstall")
+	dev, ok := state.getDevice(deviceID)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Error: device %q is not paired\n", deviceID)
+		fmt.Fprintln(os.Stderr, "Run 'buzzpi pair <device_id>' first")
 		os.Exit(1)
 	}
-	switch args[0] {
-	case "list":
-		fmt.Println("Installed plugins (not yet implemented)")
-	case "install":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: buzzpi plugin install <plugin_id>")
-			os.Exit(1)
-		}
-		fmt.Printf("Installing plugin: %s (not yet implemented)\n", args[1])
-	case "uninstall":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: buzzpi plugin uninstall <plugin_id>")
-			os.Exit(1)
-		}
-		fmt.Printf("Uninstalling plugin: %s (not yet implemented)\n", args[1])
-	default:
-		fmt.Fprintf(os.Stderr, "Error: unknown subcommand: %s\n", args[0])
+
+	c := bpp.NewClient(deviceID, dev.Address, dev.Port)
+	if err := c.Connect(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: connection failed: %v\n", err)
 		os.Exit(1)
 	}
+	defer c.Close()
+
+	fmt.Print("Authenticating... ")
+	if _, err := c.Handshake(ctx, dev.SessionToken); err != nil {
+		fmt.Printf("\nAuthentication failed: %v\n", err)
+		fmt.Println("Session may have expired. Re-pair with: buzzpi pair " + deviceID)
+		os.Exit(1)
+	}
+	fmt.Println("OK")
+
+	fmt.Print("Querying sessions... ")
+	resp, err := c.Call(ctx, "pair.status", map[string]string{
+		"device_id": deviceID,
+	})
+	if err != nil {
+		fmt.Printf("\nError: %v\n", err)
+		os.Exit(1)
+	}
+
+	var status struct {
+		Sessions []struct {
+			ClientID  string `json:"client_id"`
+			ExpiresAt int64  `json:"expires_at"`
+			CreatedAt int64  `json:"created_at"`
+		} `json:"sessions"`
+	}
+	if err := json.Unmarshal(resp.Result, &status); err != nil {
+		fmt.Printf("\nError: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("OK")
+	fmt.Println()
+
+	if len(status.Sessions) == 0 {
+		fmt.Println("No active sessions.")
+		return
+	}
+
+	fmt.Printf("%-24s %-20s %-20s\n", "CLIENT", "CREATED", "EXPIRES")
+	fmt.Println("──────────────────────────────────────────────────────────────")
+	for _, s := range status.Sessions {
+		created := time.Unix(s.CreatedAt, 0).Format("2006-01-02 15:04")
+		expires := time.Unix(s.ExpiresAt, 0).Format("2006-01-02 15:04")
+		fmt.Printf("%-24s %-20s %-20s\n", s.ClientID, created, expires)
+	}
+	fmt.Printf("\n%d active session(s)\n", len(status.Sessions))
 }
 
 // ── help ────────────────────────────────────────────────────────────────────
@@ -343,6 +655,14 @@ Examples:
   buzzpi discover
   buzzpi discover 10s
 `)
+		case "devices":
+			fmt.Print(`Usage: buzzpi devices
+
+List all paired devices stored locally.
+
+Examples:
+  buzzpi devices
+`)
 		case "device":
 			fmt.Print(`Usage: buzzpi device info|stats <device_id>
 
@@ -354,6 +674,17 @@ Subcommands:
 
 Examples:
   buzzpi device info dev_a1b2c3d4
+`)
+		case "terminal":
+			fmt.Print(`Usage: buzzpi terminal <device_id>
+
+Open a terminal session with a paired device.
+
+The device must already be paired via 'buzzpi pair <device_id>'.
+Type commands and press Enter to execute. Ctrl+C to exit.
+
+Examples:
+  buzzpi terminal dev_a1b2c3d4
 `)
 		case "pair":
 			fmt.Print(`Usage: buzzpi pair <device_id>

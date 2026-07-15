@@ -530,7 +530,7 @@ var (
 
 ```go
 client := bpp.NewClient(bpp.ClientConfig{
-    RelayURL: "wss://relay.buzzpi.dev/v1",
+    RelayURL: "wss://jphat.net/buzzpi/relay/v1",
 })
 
 // Connect to device
@@ -561,7 +561,7 @@ term.Write([]byte("ls -la\n"))
 
 ```kotlin
 val client = BppClient(
-    relayUrl = "wss://relay.buzzpi.dev/v1",
+    relayUrl = "wss://jphat.net/buzzpi/relay/v1",
     context = applicationContext
 )
 

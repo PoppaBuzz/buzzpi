@@ -115,7 +115,7 @@ A well-defined security model ensures:
 | PAKE (pairing) | SPAKE2+ | Best-audited balanced PAKE for PIN-based auth |
 | Session tokens | SHA-256 (HMAC) | Fast, no length-extension attack concerns |
 | TLS | TLS 1.3 | Mandatory — no fallback to TLS 1.2 |
-| Certificate pinning | SPKI hash | Pin relay.buzzpi.dev public key on first connection |
+| Certificate pinning | SPKI hash | Pin jphat.net/buzzpi/relay public key on first connection |
 | Random number gen | `crypto/rand` (Go) | OS entropy source |
 | Secure compare | Constant-time | All token/code comparisons use constant-time comparison |
 
@@ -206,13 +206,13 @@ Certificate: ECDSA P-256 (not RSA)
 
 - **Runtime self-signed certificate** — generated at first boot, used for LAN connections
 - **Cloud Relay certificate** — Let's Encrypt / public CA, used for WSS relay connections
-- **Certificate pinning (Android)** — SPKI hash of relay.buzzpi.dev, updated via app update
+- **Certificate pinning (Android)** — SPKI hash of jphat.net/buzzpi/relay, updated via app update
 
 #### WebSocket Security
 
 ```
 wss://device.local:49872/    → LAN (self-signed cert, TOFU)
-wss://relay.buzzpi.dev/      → Remote (CA-signed cert, pinned)
+wss://jphat.net/buzzpi/relay/      → Remote (CA-signed cert, pinned)
 ```
 
 All WebSocket connections use TLS 1.3. The Runtime refuses plain `ws://` connections.
@@ -348,7 +348,7 @@ Before each release:
 
 ### 9. Vulnerability Reporting
 
-**Reporting channel:** `security@buzzpi.dev` (PGP-encrypted, key published on website)
+**Reporting channel:** `security.buzzpi@jphat.net` (PGP-encrypted, key published on website)
 
 **Response SLA:**
 

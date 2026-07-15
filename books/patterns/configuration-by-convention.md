@@ -14,7 +14,7 @@ The Runtime has one configuration file (`/var/lib/buzzpi/config.json`) but it is
 
 | Feature | Default Convention | Configurable? |
 |---------|-------------------|---------------|
-| Relay Server URL | `wss://relay.buzzpi.dev/ws` | Yes |
+| Relay Server URL | `wss://jphat.net/buzzpi/relay/ws` | Yes |
 | Log level | `info` | Yes |
 | Log directory | `/var/lib/buzzpi/logs/` | Yes |
 | Max log size | 1MB | Yes |
@@ -25,7 +25,7 @@ The Runtime has one configuration file (`/var/lib/buzzpi/config.json`) but it is
 | Allowed file roots | `/home/*`, `/var/lib/buzzpi/*`, `/tmp/*` | Yes |
 | Auto-update | `enabled` | Yes |
 
-If the user installs the Runtime via the standard script (`curl -sSL https://buzzpi.dev/install | bash`), all defaults apply. The Runtime starts, connects to the default relay, and begins accepting pairing requests.
+If the user installs the Runtime via the standard script (`curl -sSL https://jphat.net/install | bash`), all defaults apply. The Runtime starts, connects to the default relay, and begins accepting pairing requests.
 
 ### When Configuration Is Needed
 
@@ -40,7 +40,7 @@ Configuration is required only for:
 When a configuration option is missing from the file, the Runtime logs the default value being used at debug level:
 
 ```
-[DEBUG] Using default relay URL: wss://relay.buzzpi.dev/ws
+[DEBUG] Using default relay URL: wss://jphat.net/buzzpi/relay/ws
 [DEBUG] Using default log level: info
 ```
 

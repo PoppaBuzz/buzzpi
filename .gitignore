@@ -9,6 +9,10 @@ agent/build/
 # Test coverage
 agent/coverage.out
 agent/coverage.raw
+agent/cover_*.out
+agent/*_coverage
+agent/*_cov
+agent/all_cover
 
 # IDE
 .vscode/
@@ -21,7 +25,36 @@ agent/coverage.raw
 Thumbs.db
 
 # Agent runtime state
-.omo/
+.mo/
 
 # Dependency directories
 agent/vendor/
+
+# Design assets (source files, copied into Android res/ when needed)
+images/
+
+# Empty / staging directories
+playground/
+tools/
+design/
+backend/
+examples/
+
+# Build output
+android/app/build/
+android/build/
+
+# Android local config
+android/local.properties
+
+# One-off scripts
+fix_kotlin_format.py
+
+# Tool config
+.serena/
+
+# Working docs
+agent/plan_v0.2.0.md
+
+# Android build intermediates
+android/.kotlin/

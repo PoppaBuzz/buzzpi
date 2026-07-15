@@ -16,7 +16,7 @@
 - Architecture Decision Records (DECISIONS.md)
 - Book structure (Product, Experience, Engineering, Protocol, Community, Patterns, Reference)
 
-Status: **In Progress**
+Status: **Complete**
 
 ---
 
@@ -37,17 +37,25 @@ Status: **Planned**
 ## Phase 1 — Core (v0.1.x — v0.2.x)
 
 - BuzzPi Agent in Go (systemd service)
+  - Runtime daemon with mDNS, WebSocket, BPP handshake
+  - Device identity management (Ed25519 keypairs)
+  - Session middleware and pairing handlers
+  - Cross-compilation for Pi 3/4/5 (arm64, armv7)
+  - Installation script (install.sh) and post-install verification (verify.sh)
+  - systemd service with security hardening
+  - First-boot auto-discovery via mDNS (zero configuration)
+  - Pre-built SD card images for easy setup
 - BuzzPi Android app with Jetpack Compose and Material 3
 - LAN discovery via mDNS/DNS-SD
 - QR code pairing
-- **Remote Desktop** — graphical screen streaming via WebRTC with adaptive quality, touch/mouse input, LAN-optimized
+- **Remote Desktop** — graphical screen streaming with touch/mouse input
 - Terminal with full ANSI color support
 - File transfer (browse, upload, download, rename)
 - Live system stats dashboard (CPU, memory, temperature, storage)
 - Connection Engine with local transport selection
 - BPP specification draft (connection, authentication, events)
 
-Status: **Planned**
+Status: **Complete**
 
 ---
 

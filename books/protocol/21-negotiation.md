@@ -128,7 +128,7 @@ If the major versions do not overlap:
       "device_version": "2.0.0",
       "supported_range": ">=2.0.0 <3.0.0",
       "update_available": true,
-      "update_url": "https://buzzpi.dev/download/latest"
+      "update_url": "https://jphat.net/download/latest"
     }
   }
 }

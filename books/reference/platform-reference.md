@@ -43,7 +43,7 @@ Every concrete fact about the BuzzPi Platform — filesystem layout, environment
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BUZZPI_RELAY_URL` | `wss://relay.buzzpi.dev/ws` | Relay server WebSocket URL |
+| `BUZZPI_RELAY_URL` | `wss://jphat.net/buzzpi/relay/ws` | Relay server WebSocket URL |
 | `BUZZPI_LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warning`, `error` |
 | `BUZZPI_LOG_DIR` | `/var/lib/buzzpi/logs` | Log directory |
 | `BUZZPI_CONFIG_DIR` | `/var/lib/buzzpi` | Configuration directory |
@@ -67,7 +67,7 @@ Every concrete fact about the BuzzPi Platform — filesystem layout, environment
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BUZZPI_TOKEN` | — | API token (or use `--token` flag) |
-| `BUZZPI_RELAY_URL` | `wss://relay.buzzpi.dev/ws` | Relay server URL |
+| `BUZZPI_RELAY_URL` | `wss://jphat.net/buzzpi/relay/ws` | Relay server URL |
 
 ## Android Permissions
 

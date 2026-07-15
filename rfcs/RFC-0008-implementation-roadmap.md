@@ -260,7 +260,7 @@ buzzpi-android/             ─── Android project
 ✓ Plugin capabilities usable from Android app
 ✓ Plugin crash does not crash Runtime
 ✓ Plugin permissions enforced (network, filesystem)
-✓ Plugin registry at plugins.buzzpi.dev
+✓ Plugin registry at jphat.net/buzzpi/plugins
 ```
 
 ### 7. Milestones: v0.6.0–v0.9.0 — Community

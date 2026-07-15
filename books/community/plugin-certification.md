@@ -56,7 +56,7 @@ Plugins maintained by the BuzzPi core team.
 - Continuous monitoring (error tracking, performance)
 - Support commitment (bugs fixed within release cycle)
 - Full test coverage (unit + integration)
-- API documentation hosted on docs.buzzpi.dev
+- API documentation hosted on jphat.net/buzzpi/docs
 
 ---
 
@@ -149,7 +149,7 @@ license: MIT
 
 ## Registry
 
-Certified plugins are listed in the **BuzzPi Plugin Registry** at `plugins.buzzpi.dev`.
+Certified plugins are listed in the **BuzzPi Plugin Registry** at `jphat.net/buzzpi/plugins`.
 
 ### Registry Entry
 
@@ -165,9 +165,9 @@ Certified plugins are listed in the **BuzzPi Plugin Registry** at `plugins.buzzp
     "url": "https://github.com/your"
   },
   "description": "Browse, manage, and inspect Docker containers on your Pi",
-  "download_url": "https://plugins.buzzpi.dev/docker/v1.0.0/bundle.tar.gz",
+  "download_url": "https://jphat.net/buzzpi/plugins/docker/v1.0.0/bundle.tar.gz",
   "checksum": "sha256:abc123...",
-  "manifest_url": "https://plugins.buzzpi.dev/docker/v1.0.0/plugin.yaml",
+  "manifest_url": "https://jphat.net/buzzpi/plugins/docker/v1.0.0/plugin.yaml",
   "tags": ["docker", "containers", "devops"],
   "updated_at": "2026-07-07T00:00:00Z"
 }

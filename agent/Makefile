@@ -13,7 +13,7 @@ LDFLAGS := -ldflags "\
 	-X github.com/buzzpi/agent/internal/version.Commit=$(COMMIT) \
 	-X github.com/buzzpi/agent/internal/version.Date=$(DATE)"
 
-.PHONY: all build runtime cli clean test lint fmt vet coverage
+.PHONY: all build runtime cli clean test lint fmt vet coverage run deps deps-update install uninstall verify deploy
 
 all: fmt vet lint test build
 
@@ -29,6 +29,31 @@ runtime:
 cli:
 	@mkdir -p $(OUTPUT_DIR)
 	$(GO) build $(LDFLAGS) -o $(OUTPUT_DIR)/buzzpi ./cmd/buzzpi/
+
+## Package: build + create release archives
+package: cross
+	@mkdir -p $(OUTPUT_DIR)/release
+	@cd $(OUTPUT_DIR) && tar czf release/buzzpi-runtime-linux-arm64.tar.gz buzzpi-runtime-linux-arm64
+	@cd $(OUTPUT_DIR) && tar czf release/buzzpi-runtime-linux-arm.tar.gz buzzpi-runtime-linux-arm
+	@cd $(OUTPUT_DIR) && tar czf release/buzzpi-runtime-linux-amd64.tar.gz buzzpi-runtime-linux-amd64
+	@cp install.sh $(OUTPUT_DIR)/release/
+	@cp verify.sh $(OUTPUT_DIR)/release/
+	@cp setup.sh $(OUTPUT_DIR)/release/
+	@echo "Release packages created in $(OUTPUT_DIR)/release/"
+
+## Quick install: download + install on Pi via SSH (one-liner)
+## Usage: make quick-install PI=192.168.1.50
+PI ?= 
+PI_USER ?= pi
+
+quick-install:
+ifndef PI
+	$(error PI is not set. Usage: make quick-install PI=192.168.1.50)
+endif
+	@echo "Installing BuzzPi on $(PI_USER)@$(PI)..."
+	ssh $(PI_USER)@$(PI) "curl -sSL https://jphat.net/buzzpi/setup.sh | sudo bash" || \
+	ssh $(PI_USER)@$(PI) "wget -qO- https://jphat.net/buzzpi/setup.sh | sudo bash"
+	@echo "Done! BuzzPi is running."
 
 ## Cross-compile for all target platforms
 cross: cross-runtime-arm64 cross-runtime-arm cross-runtime-amd64 cross-cli-all
@@ -96,17 +121,70 @@ deps-update:
 	$(GO) get -u ./...
 	$(GO) mod tidy
 
+## Install on the local Pi (run on the Pi itself)
+install:
+	@sudo ./install.sh
+
+## Uninstall from the local Pi (run on the Pi itself)
+uninstall:
+	@sudo ./install.sh --uninstall
+
+## Upgrade binary on the local Pi (run on the Pi itself)
+upgrade:
+	@sudo ./install.sh --upgrade
+
+## Verify installation (run on the Pi after install)
+verify:
+	@sudo ./verify.sh
+
+## Deploy: cross-compile + copy to Pi over SSH
+## Usage: make deploy PI=192.168.1.50 PI_USER=pi
+PI ?= 
+PI_USER ?= pi
+PI_ARCH ?= arm64
+
+deploy:
+ifndef PI
+	$(error PI is not set. Usage: make deploy PI=192.168.1.50)
+endif
+	@echo "Building for linux/$(PI_ARCH)..."
+	@$(MAKE) cross-runtime-$(PI_ARCH)
+	@echo "Copying to $(PI_USER)@$(PI)..."
+	scp $(OUTPUT_DIR)/buzzpi-runtime-linux-$(PI_ARCH) $(PI_USER)@$(PI):~/
+	@echo "Installing on Pi..."
+	ssh $(PI_USER)@$(PI) "chmod +x ~/buzzpi-runtime-linux-$(PI_ARCH) && sudo ~/buzzpi-runtime-linux-$(PI_ARCH) --install"
+	@echo "Verifying..."
+	ssh $(PI_USER)@$(PI) "sudo ./install.sh" || true
+	@echo "Deploy complete!"
+
+## Deploy with install.sh (uses make deploy)
+deploy-script:
+ifndef PI
+	$(error PI is not set. Usage: make deploy-script PI=192.168.1.50)
+endif
+	@echo "Building for linux/$(PI_ARCH)..."
+	@$(MAKE) cross-runtime-$(PI_ARCH)
+	@echo "Copying files to $(PI_USER)@$(PI)..."
+	scp $(OUTPUT_DIR)/buzzpi-runtime-linux-$(PI_ARCH) $(PI_USER)@$(PI):~/buzzpi-runtime
+	scp install.sh $(PI_USER)@$(PI):~/install.sh
+	scp verify.sh $(PI_USER)@$(PI):~/verify.sh
+	@echo "Installing on Pi..."
+	ssh $(PI_USER)@$(PI) "chmod +x ~/buzzpi-runtime ~/install.sh ~/verify.sh && sudo ./install.sh"
+	@echo "Deploy complete!"
+
 ## Help: list all targets
 help:
 	@echo "BuzzPi Agent Build System"
 	@echo ""
-	@echo "Targets:"
+	@echo "Build Targets:"
 	@echo "  all          Default: fmt vet lint test build"
 	@echo "  build        Build Runtime + CLI for current platform"
 	@echo "  runtime      Build only the Runtime daemon"
 	@echo "  cli          Build only the CLI client"
 	@echo "  cross        Cross-compile for all target platforms"
 	@echo "  clean        Remove build artifacts"
+	@echo ""
+	@echo "Code Quality:"
 	@echo "  fmt          Format all Go source files"
 	@echo "  vet          Run go vet"
 	@echo "  lint         Run golangci-lint"
@@ -114,5 +192,18 @@ help:
 	@echo "  test-race    Run unit tests with race detector"
 	@echo "  test-all     Run all tests (including integration)"
 	@echo "  coverage     Generate code coverage report"
+	@echo ""
+	@echo "Run:"
 	@echo "  run          Run Runtime locally"
 	@echo "  deps         Download and tidy dependencies"
+	@echo ""
+	@echo "Deploy to Raspberry Pi:"
+	@echo "  deploy       Cross-compile + SSH deploy to Pi"
+	@echo "               Usage: make deploy PI=192.168.1.50 PI_USER=pi"
+	@echo "  deploy-script  Same but uses install.sh"
+	@echo ""
+	@echo "Remote (run on Pi):"
+	@echo "  install      Install BuzzPi on this machine"
+	@echo "  uninstall    Remove BuzzPi from this machine"
+	@echo "  upgrade      Upgrade binary and restart"
+	@echo "  verify       Run post-install verification"

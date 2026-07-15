@@ -11,7 +11,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/envelope.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/envelope.json",
   "title": "BPP Message Envelope",
   "description": "Universal envelope for all BPP protocol messages",
   "type": "object",
@@ -104,7 +104,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/device.info.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/device.info.json",
   "title": "Device Info Response",
   "type": "object",
   "required": ["device_id", "friendly_name", "runtime_version", "capabilities"],
@@ -149,7 +149,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/device.stats.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/device.stats.json",
   "title": "Device Stats Response",
   "type": "object",
   "required": ["cpu", "memory", "storage", "uptime_seconds"],
@@ -204,7 +204,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/terminal.open.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/terminal.open.json",
   "title": "Terminal Open Request",
   "type": "object",
   "required": ["rows", "cols"],
@@ -234,7 +234,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/terminal.open.response.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/terminal.open.response.json",
   "title": "Terminal Open Response",
   "type": "object",
   "required": ["session_id", "rows", "cols"],
@@ -258,7 +258,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/screen.start.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/screen.start.json",
   "title": "Screen Start Request",
   "type": "object",
   "properties": {
@@ -295,7 +295,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/capabilities.list.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/capabilities.list.json",
   "title": "Capability List Response",
   "type": "object",
   "required": ["capabilities"],
@@ -335,7 +335,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/error.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/error.json",
   "title": "BPP Error",
   "type": "object",
   "required": ["code", "message"],
@@ -366,7 +366,7 @@ All BPP messages use this envelope schema.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bpp.buzzpi.dev/schemas/pagination.json",
+  "$id": "https://jphat.net/buzzpi/bpp/schemas/pagination.json",
   "title": "Pagination Parameters",
   "type": "object",
   "properties": {
@@ -399,7 +399,7 @@ import (
 var schemaCache = make(map[string]*jsonschema.Schema)
 
 func ValidateBPPEnvelope(data []byte) error {
-    return validate("https://bpp.buzzpi.dev/schemas/envelope.json", data)
+    return validate("https://jphat.net/buzzpi/bpp/schemas/envelope.json", data)
 }
 
 func validate(schemaURL string, data []byte) error {
@@ -445,7 +445,7 @@ def validate_bpp_message(data: dict) -> None:
 Schemas are distributed as part of the BPP specification and can be fetched from:
 
 ```
-https://bpp.buzzpi.dev/schemas/{schema_name}.json
+https://jphat.net/buzzpi/bpp/schemas/{schema_name}.json
 ```
 
 The complete schema set is also bundled with each Runtime release in the `schemas/` directory and published as a standalone package: `@buzzpi/bpp-schemas` (npm) and `buzzpi-bpp-schemas` (PyPI).

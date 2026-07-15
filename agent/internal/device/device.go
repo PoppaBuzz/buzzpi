@@ -20,6 +20,7 @@ import (
 // Service provides device information and system statistics.
 type Service struct {
 	cfg       *config.Config
+	deviceID  string
 	log       *slog.Logger
 	startTime time.Time
 	hostname  string
@@ -85,7 +86,7 @@ type InterfaceStats struct {
 }
 
 // NewService creates a new Device service.
-func NewService(cfg *config.Config, log *slog.Logger) (*Service, error) {
+func NewService(cfg *config.Config, deviceID string, log *slog.Logger) (*Service, error) {
 	if log == nil {
 		log = slog.Default()
 	}
@@ -97,6 +98,7 @@ func NewService(cfg *config.Config, log *slog.Logger) (*Service, error) {
 
 	return &Service{
 		cfg:       cfg,
+		deviceID:  deviceID,
 		log:       log.With("component", "device"),
 		startTime: time.Now(),
 		hostname:  hostname,
@@ -105,10 +107,9 @@ func NewService(cfg *config.Config, log *slog.Logger) (*Service, error) {
 
 // HandleInfo returns device identity information.
 func (s *Service) HandleInfo(ctx context.Context, params json.RawMessage) (interface{}, error) {
-	// TODO: Read device identity from state store
 	bppVer, _ := strconv.Atoi(version.BPPVersion)
 	return &InfoResponse{
-		DeviceID:       "dev_unknown",
+		DeviceID:       s.deviceID,
 		FriendlyName:   s.friendlyName(),
 		Model:          "raspberry-pi/5",
 		RuntimeVersion: version.Version,

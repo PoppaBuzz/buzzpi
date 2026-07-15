@@ -1147,7 +1147,7 @@ End signaling session.
 
 # REST API (Registry Service)
 
-Base URL: `https://api.buzzpi.dev/v1`
+Base URL: `https://jphat.net/buzzpi/api/v1`
 
 ### Auth Endpoints
 

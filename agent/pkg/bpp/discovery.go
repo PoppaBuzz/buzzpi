@@ -198,6 +198,7 @@ func (b *Browser) Discover(ctx context.Context, timeout time.Duration) ([]Discov
 		// Iface: nil  // all interfaces
 	})
 
+	close(resultsCh)
 	<-done
 
 	// Deduplicate by device ID.

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuzzPi — Your Raspberry Pi. Anywhere. Instantly.</title>
+<meta name="description" content="BuzzPi is an open platform for managing Raspberry Pis — without ever thinking about networking.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0e17;--surface:#111827;--card:#1a1f2e;--card-hover:#1f2538;--border:#1f2937;--primary:#3b82f6;--primary-glow:rgba(59,130,246,0.15);--amber:#f59e0b;--text:#f1f5f9;--text-secondary:#94a3b8;--text-tertiary:#64748b;--font:'Inter',system-ui,-apple-system,sans-serif;--mono:'JetBrains Mono',monospace;--radius:12px;--radius-sm:8px}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,14,23,.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+nav .container{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;color:var(--text);text-decoration:none}
+.logo svg{width:28px;height:28px}
+.nav-links{display:flex;align-items:center;gap:32px;list-style:none}
+.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:14px;font-weight:500;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:var(--primary);color:#fff!important;border-radius:var(--radius-sm);font-size:13px;font-weight:600;transition:background .2s,transform .15s}
+.nav-cta:hover{background:#2563eb!important;transform:translateY(-1px);color:#fff!important}
+.hero{min-height:100vh;display:flex;align-items:center;padding-top:64px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 30% 40%,var(--primary-glow) 0%,transparent 50%),radial-gradient(ellipse at 70% 60%,rgba(245,158,11,.06) 0%,transparent 50%);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;position:relative;z-index:1}
+.hero-content{max-width:580px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:100px;font-size:12px;font-weight:600;color:var(--primary);margin-bottom:24px;letter-spacing:.3px}
+.hero h1{font-size:56px;font-weight:700;line-height:1.1;letter-spacing:-1.5px;margin-bottom:20px}
+.hero h1 span{color:var(--primary)}
+.hero-sub{font-size:18px;color:var(--text-secondary);line-height:1.7;margin-bottom:12px;max-width:480px}
+.north-star{margin:28px 0 36px;padding:20px 24px;background:var(--card);border-left:3px solid var(--amber);border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.north-star p{font-size:15px;color:var(--text-secondary);font-style:italic;line-height:1.8}
+.north-star p strong{color:var(--text);font-style:normal}
+.hero-ctas{display:flex;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:var(--radius-sm);font-size:15px;font-weight:600;text-decoration:none;transition:all .2s;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:#2563eb;transform:translateY(-2px);box-shadow:0 8px 24px rgba(59,130,246,.3)}
+.btn-secondary{border:1px solid var(--border);color:var(--text)}
+.btn-secondary:hover{border-color:var(--text-tertiary);background:var(--card);transform:translateY(-2px)}
+.hero-visual{display:flex;align-items:center;justify-content:center;position:relative}
+.hero-device{width:420px;height:520px;background:linear-gradient(145deg,var(--card),var(--surface));border-radius:24px;border:1px solid var(--border);padding:32px;position:relative;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.hero-device-status{display:flex;align-items:center;gap:10px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hero-device-screen{background:#0f172a;border-radius:8px;padding:16px;min-height:340px;font-family:var(--mono);font-size:13px;line-height:1.8;color:var(--text-secondary)}
+.hero-device-screen .prompt{color:#22c55e}
+.hero-device-screen .cmd{color:var(--text)}
+.hero-device-screen .out{color:#94a3b8}
+.hero-device-screen .cursor{display:inline-block;width:8px;height:16px;background:var(--primary);animation:blink 1s step-end infinite;vertical-align:text-bottom;margin-left:2px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.hero-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:1}
+.hero-scroll a{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-tertiary);text-decoration:none;font-size:12px;transition:color .2s}
+.hero-scroll a:hover{color:var(--text-secondary)}
+section{padding:100px 0}
+.section-label{font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--primary);margin-bottom:12px}
+.section-title{font-size:36px;font-weight:700;letter-spacing:-.5px;margin-bottom:16px}
+.section-sub{font-size:17px;color:var(--text-secondary);max-width:560px;line-height:1.7}
+#problem .container{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.problem-old,.problem-buzzpi{padding:32px;border-radius:var(--radius);border:1px solid var(--border)}
+.problem-old{background:rgba(239,68,68,.04);border-color:rgba(239,68,68,.15)}
+.problem-buzzpi{background:rgba(34,197,94,.04);border-color:rgba(34,197,94,.15)}
+.problem-label{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px}
+.problem-old .problem-label{color:#ef4444}
+.problem-buzzpi .problem-label{color:#22c55e}
+.problem-item{display:flex;align-items:center;gap:12px;padding:10px 0;font-size:14px;color:var(--text-secondary);border-bottom:1px solid var(--border)}
+.problem-item:last-child{border-bottom:none}
+#features{background:var(--surface)}
+.features-header{text-align:center;margin-bottom:64px}
+.features-header .section-sub{margin:0 auto}
+.features-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.feature-card{padding:28px 24px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);transition:all .25s}
+.feature-card:hover{background:var(--card-hover);border-color:var(--text-tertiary);transform:translateY(-4px)}
+.feature-icon{width:40px;height:40px;border-radius:10px;background:rgba(59,130,246,.1);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.feature-icon svg{width:20px;height:20px;color:var(--primary)}
+.feature-card h3{font-size:15px;font-weight:600;margin-bottom:8px}
+.feature-card p{font-size:13px;color:var(--text-secondary);line-height:1.6}
+#how{text-align:center}
+#how .section-sub{margin:0 auto 56px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:40px}
+.step{position:relative}
+.step-number{width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;margin:0 auto 20px;position:relative;z-index:2}
+.step-connector{position:absolute;top:24px;left:calc(50% + 40px);right:calc(50% - 40px);height:1px;background:linear-gradient(90deg,var(--primary),var(--border));z-index:1}
+.step:last-child .step-connector{display:none}
+.step-visual{width:120px;height:120px;margin:0 auto 20px;border-radius:var(--radius);background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
+.step h3{font-size:18px;font-weight:600;margin-bottom:8px}
+.step p{font-size:14px;color:var(--text-secondary);max-width:280px;margin:0 auto;line-height:1.6}
+#architecture{background:var(--surface)}
+.arch-header{text-align:center;margin-bottom:56px}
+.arch-header .section-sub{margin:0 auto}
+.arch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:900px;margin:0 auto}
+.arch-card{padding:24px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);text-align:center;transition:all .25s}
+.arch-card:hover{background:var(--card-hover);transform:translateY(-2px)}
+.arch-card-icon{width:36px;height:36px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center}
+.arch-card-icon svg{width:24px;height:24px;color:var(--primary)}
+.arch-card h4{font-size:13px;font-weight:600;margin-bottom:4px}
+.arch-card p{font-size:11px;color:var(--text-tertiary);line-height:1.5}
+.principles-scroll{display:flex;gap:12px;overflow-x:auto;padding:12px 0 24px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.principles-scroll::-webkit-scrollbar{display:none}
+.principle-tile{flex-shrink:0;padding:14px 22px;background:var(--card);border:1px solid var(--border);border-radius:100px;font-size:13px;font-weight:500;color:var(--text-secondary);white-space:nowrap;transition:all .2s}
+.principle-tile:hover{border-color:var(--primary);color:var(--text);background:rgba(59,130,246,.06)}
+#cta{text-align:center;padding:120px 0;position:relative;overflow:hidden}
+#cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,var(--primary-glow),transparent 60%);pointer-events:none}
+#cta h2{font-size:40px;font-weight:700;letter-spacing:-1px;margin-bottom:16px}
+#cta p{font-size:17px;color:var(--text-secondary);max-width:480px;margin:0 auto 36px;line-height:1.7}
+.cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+footer{padding:48px 0;border-top:1px solid var(--border)}
+footer .container{display:flex;align-items:center;justify-content:space-between}
+.footer-links{display:flex;gap:24px}
+.footer-links a{color:var(--text-tertiary);text-decoration:none;font-size:13px;transition:color .2s}
+.footer-links a:hover{color:var(--text)}
+footer .logo{font-size:14px}
+.arch-connector{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:32px;font-size:13px;color:var(--text-tertiary)}.arch-connector svg{width:18px;height:18px}
+.fade-in{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+.fade-in-d1{transition-delay:.1s}
+.fade-in-d2{transition-delay:.2s}
+.fade-in-d3{transition-delay:.3s}
+@media(max-width:1024px){
+.hero-grid{grid-template-columns:1fr;gap:48px;text-align:center}
+.hero-content{max-width:100%}
+.hero-sub{margin:0 auto}
+.north-star{text-align:left;max-width:480px;margin-left:auto;margin-right:auto}
+.hero-ctas{justify-content:center}
+.hero-device{width:340px;height:440px;margin:0 auto}
+.hero h1{font-size:40px}
+.features-grid{grid-template-columns:repeat(2,1fr)}
+.arch-grid{grid-template-columns:repeat(2,1fr)}
+#problem .container{grid-template-columns:1fr;gap:32px}
+}
+@media(max-width:640px){
+.hero h1{font-size:32px}
+.hero-sub{font-size:16px}
+.hero-device{width:280px;height:380px;padding:20px}
+.hero-device-screen{font-size:12px;min-height:260px}
+.features-grid{grid-template-columns:1fr}
+.steps{grid-template-columns:1fr;gap:48px}
+.step-connector{display:none}
+.arch-grid{grid-template-columns:1fr}
+section{padding:64px 0}
+.section-title{font-size:28px}
+#cta h2{font-size:28px}
+nav .container{height:56px}
+.nav-links{display:none}
+footer .container{flex-direction:column;gap:16px;text-align:center}
+}
+</style>
+</head>
+<body>
+<nav>
+<div class="container">
+<a href="#" class="logo">
+<svg viewBox="0 0 28 28" fill="none"><rect x="2" y="2" width="24" height="24" rx="6" stroke="#3b82f6" stroke-width="2"/><circle cx="14" cy="14" r="3" fill="#3b82f6"/><path d="M14 5v4M14 19v4M5 14h4M19 14h4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg>
+BuzzPi
+</a>
+<ul class="nav-links">
+<li><a href="#features">Features</a></li>
+<li><a href="#how">How It Works</a></li>
+<li><a href="#architecture">Architecture</a></li>
+<li><a href="https://github.com/buzzpi" target="_blank">GitHub</a></li>
+<li><a href="#cta" class="nav-cta"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h8M8 4v8"/></svg> Get Started</a></li>
+</ul>
+</div>
+</nav>
+
+<section class="hero">
+<div class="container">
+<div class="hero-grid">
+<div class="hero-content">
+<div class="badge"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg> Now in Developer Preview</div>
+<h1>Your Raspberry Pi.<br><span>Anywhere. Instantly.</span></h1>
+<p class="hero-sub">BuzzPi is an open platform for managing Raspberry Pis — without ever thinking about networking, IP addresses, or SSH config.</p>
+<div class="north-star"><p>&ldquo;A Raspberry Pi should feel like a <strong>Bluetooth speaker</strong>.<br>You plug it in. It appears. You tap it. It works.&rdquo;</p></div>
+<div class="hero-ctas">
+<a href="#features" class="btn btn-primary">See Features</a>
+<a href="https://github.com/buzzpi" target="_blank" class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.725.465-1.53.675-3.345.675-3.495 0-3.57-3.165-6.465-7.5-6.465-4.02 0-7.5 3.165-7.5 7.5 0 3.3 2.13 6.105 5.085 7.095.375.075.495-.165.495-.36 0-.18-.015-.78-.015-1.38-1.845.33-2.325-.75-2.475-1.44-.075-.195-.405-.795-.69-.96-.24-.12-.585-.42-.015-.42.54 0 .93.495 1.06.705.615 1.035 1.605.87 1.995.66.06-.42.24-.87.435-1.115-1.53-.165-3.135-.765-3.135-3.39 0-.75.27-1.365.705-1.845-.075-.18-.315-.885.06-1.845 0 0 .585-.18 1.92.705.555-.15 1.155-.225 1.755-.225s1.2.075 1.755.225c1.335-.885 1.92-.705 1.92-.705.375.96.135 1.665.06 1.845.435.48.705 1.095.705 1.845 0 2.625-1.605 3.225-3.135 3.39.24.21.465.615.465 1.245 0 .9-.015 1.62-.015 1.845 0 .195.12.435.495.36C19.875 18.105 22 15.3 22 12c0-6.63-5.37-12-12-12z"/></svg> Star on GitHub</a>
+</div>
+</div>
+<div class="hero-visual">
+<div class="hero-device">
+<div class="hero-device-status">
+<span class="status-dot"></span>
+<span style="font-size:13px;font-weight:500;color:var(--text)">buzzpi-runtime</span>
+<span style="font-size:11px;color:var(--text-tertiary);margin-left:auto">v0.2.0</span>
+</div>
+<div class="hero-device-screen">
+<div><span class="prompt">pi@buzzpi:~$</span> <span class="cmd">buzzpi pair phone</span></div>
+<div class="out">Pairing initiated...</div>
+<div class="out">PIN: <span style="color:var(--amber);font-weight:600">382 914</span></div>
+<div class="out">Verify on your phone.</div>
+<div style="margin-top:12px"><span class="prompt">pi@buzzpi:~$</span> <span class="cmd">buzzpi device info</span></div>
+<div class="out">CPU: ARM Cortex-A72 1.8GHz</div>
+<div class="out">RAM: 3.8GB / 8GB | Temp: 52&deg;C</div>
+<div class="out">Uptime: 14d 6h 23m</div>
+<div style="margin-top:12px"><span class="prompt">pi@buzzpi:~$</span><span class="cursor"></span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="hero-scroll"><a href="#problem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 13l5 5 5-5M7 6l5 5 5-5"/></svg><span>Scroll</span></a></div>
+</div>
+</section>
+<section id="problem"><div class="container">
+<div>
+<div class="section-label">The Old Way</div>
+<div class="problem-old">
+<div class="problem-label">Friction</div>
+<div class="problem-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg> Find your Pi&rsquo;s IP address</div>
+<div class="problem-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg> Configure SSH keys and port forwarding</div>
+<div class="problem-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg> Set up a VPN for remote access</div>
+<div class="problem-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg> Remember hostnames, ports, and configs</div>
+</div>
+</div>
+<div>
+<div class="section-label">The BuzzPi Way</div>
+<div class="problem-buzzpi">
+<div class="problem-label">Zero Friction</div>
+<div class="problem-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Plug in your Pi. It appears automatically.</div>
+<div class="problem-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> One-tap connect from any device</div>
+<div class="problem-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Terminal, desktop, files &mdash; one interface</div>
+<div class="problem-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> LAN or cloud relay &mdash; works everywhere</div>
+</div>
+</div>
+</div></section>
+
+<section id="features"><div class="container">
+<div class="features-header">
+<div class="section-label">Features</div>
+<h2 class="section-title">Everything you need to manage your Pi.</h2>
+<p class="section-sub">Terminal. Remote desktop. File manager. Docker. GPIO. Camera. Monitoring. AI assistant. All from one platform.</p>
+</div>
+<div class="features-grid">
+<div class="feature-card fade-in"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></div><h3>Remote Desktop</h3><p>Full graphical screen streaming. See and control your Pi&rsquo;s desktop from anywhere.</p></div>
+<div class="feature-card fade-in fade-in-d1"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 17 9 12 4 7"/><path d="M12 19h8"/></svg></div><h3>One-Tap Terminal</h3><p>Full PTY terminal with ANSI colors, multiple tabs, search. No SSH setup needed.</p></div>
+<div class="feature-card fade-in fade-in-d2"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div><h3>File Manager</h3><p>Browse, upload, download, rename, preview files on your Pi. Drag and drop.</p></div>
+<div class="feature-card fade-in fade-in-d3"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><h3>Docker Management</h3><p>Containers, images, compose stacks, logs, resource monitoring at your fingertips.</p></div>
+<div class="feature-card fade-in"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></div><h3>GPIO Control</h3><p>Interactive pin controls. Toggle pins, read sensors, visualize circuits in real time.</p></div>
+<div class="feature-card fade-in fade-in-d1"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div><h3>Camera Streaming</h3><p>Live stream, snapshots, recording. View your Pi&rsquo;s camera from your phone.</p></div>
+<div class="feature-card fade-in fade-in-d2"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></div><h3>System Monitoring</h3><p>CPU, memory, temperature, storage, network, uptime &mdash; everything at a glance.</p></div>
+<div class="feature-card fade-in fade-in-d3"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div><h3>AI Assistant</h3><p>Diagnose issues, read logs, restart services, answer questions about your Pi.</p></div>
+</div>
+</div></section>
+
+<section id="how"><div class="container">
+<div class="section-label">How It Works</div>
+<h2 class="section-title">Three steps. Zero networking knowledge.</h2>
+<p class="section-sub">From unboxing to connected in under 60 seconds. No terminal, no config files, no frustration.</p>
+<div class="steps">
+<div class="step fade-in">
+<div class="step-number">1</div>
+<div class="step-connector"></div>
+<div class="step-visual"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5C7 3 8 6 8 6"/><path d="M18 9h1.5a2.5 2.5 0 000-5C17 3 16 6 16 6"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg></div>
+<h3>Plug In</h3>
+<p>Install BuzzPi Agent on your Raspberry Pi with a single command. That&rsquo;s it.</p>
+</div>
+<div class="step fade-in fade-in-d1">
+<div class="step-number">2</div>
+<div class="step-connector"></div>
+<div class="step-visual"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"><path d="M1 9l4 4-4 4"/><path d="M9 21l4-4-4-4"/><path d="M17 17l4-4-4-4"/><path d="M21 1l-4 4 4 4"/><path d="M9 3l4 4-4 4"/></svg></div>
+<h3>Discover</h3>
+<p>Your Pi appears automatically on your phone, desktop, and CLI. No IP needed.</p>
+</div>
+<div class="step fade-in fade-in-d2">
+<div class="step-number">3</div>
+<div class="step-visual"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+<h3>Tap</h3>
+<p>Connect instantly. Terminal, remote desktop, file manager &mdash; all from one interface.</p>
+</div>
+</div>
+</div></section>
+<section id="architecture"><div class="container">
+<div class="arch-header">
+<div class="section-label">Architecture</div>
+<h2 class="section-title">Open platform. Open protocol.</h2>
+<p class="section-sub">BuzzPi is built on BPP, the BuzzPi Protocol &mdash; a JSON-based protocol over WebSocket that any device or client can implement.</p>
+</div>
+<div class="arch-grid">
+<div class="arch-card fade-in"><div class="arch-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="8" height="8" rx="2"/><rect x="14" y="2" width="8" height="8" rx="2"/><rect x="2" y="14" width="8" height="8" rx="2"/><rect x="14" y="14" width="8" height="8" rx="2"/></svg></div><h4>BuzzPi Agent</h4><p>Go daemon running on each Pi. Identity, discovery, terminal, plugins.</p></div>
+<div class="arch-card fade-in fade-in-d1"><div class="arch-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg></div><h4>BuzzPi Android</h4><p>Native Android app. Jetpack Compose, Material 3. Your Pi in your pocket.</p></div>
+<div class="arch-card fade-in fade-in-d2"><div class="arch-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 17 9 12 4 7"/><path d="M12 19h8"/></svg></div><h4>BuzzPi CLI</h4><p>Cross-platform command-line client for scripting and power users.</p></div>
+<div class="arch-card fade-in"><div class="arch-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></div><h4>BuzzPi Cloud</h4><p>Relay and registry services. Secure off-LAN access without port forwarding.</p></div>
+<div class="arch-card fade-in fade-in-d1"><div class="arch-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg></div><h4>BuzzPi SDK</h4><p>Plugin and integration SDK. Extend BuzzPi with custom capabilities.</p></div>
+<div class="arch-card fade-in fade-in-d2"><div class="arch-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div><h4>BPP Protocol</h4><p>The BuzzPi Protocol. JSON over WebSocket. The contract that makes it all work.</p></div>
+</div>
+<div class="arch-connector"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Any device that implements BPP can participate in the ecosystem.</div>
+</div></section>
+
+<section id="principles"><div class="container">
+<div class="section-label">Principles</div>
+<h2 class="section-title">Designed by conviction.</h2>
+<p class="section-sub" style="margin-bottom:24px">Nine principles guide every decision. No feature ships without serving them.</p>
+<div class="principles-scroll">
+<span class="principle-tile">No IP Addresses</span>
+<span class="principle-tile">Best Connection Always</span>
+<span class="principle-tile">Native Experience</span>
+<span class="principle-tile">Discoverability</span>
+<span class="principle-tile">Beauty</span>
+<span class="principle-tile">Performance</span>
+<span class="principle-tile">Offline-First</span>
+<span class="principle-tile">Privacy-First</span>
+<span class="principle-tile">Open Everything</span>
+</div>
+</div></section>
+
+<section id="cta"><div class="container">
+<h2>Built in the open. <span style="color:var(--primary)">For everyone.</span></h2>
+<p>BuzzPi is MIT-licensed open source. Star us on GitHub, read the books, join the community.</p>
+<div class="cta-btns">
+<a href="https://github.com/buzzpi" target="_blank" class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.725.465-1.53.675-3.345.675-3.495 0-3.57-3.165-6.465-7.5-6.465-4.02 0-7.5 3.165-7.5 7.5 0 3.3 2.13 6.105 5.085 7.095.375.075.495-.165.495-.36 0-.18-.015-.78-.015-1.38-1.845.33-2.325-.75-2.475-1.44-.075-.195-.405-.795-.69-.96-.24-.12-.585-.42-.015-.42.54 0 .93.495 1.06.705.615 1.035 1.605.87 1.995.66.06-.42.24-.87.435-1.115-1.53-.165-3.135-.765-3.135-3.39 0-.75.27-1.365.705-1.845-.075-.18-.315-.885.06-1.845 0 0 .585-.18 1.92.705.555-.15 1.155-.225 1.755-.225s1.2.075 1.755.225c1.335-.885 1.92-.705 1.92-.705.375.96.135 1.665.06 1.845.435.48.705 1.095.705 1.845 0 2.625-1.605 3.225-3.135 3.39.24.21.465.615.465 1.245 0 .9-.015 1.62-.015 1.845 0 .195.12.435.495.36C19.875 18.105 22 15.3 22 12c0-6.63-5.37-12-12-12z"/></svg> Star on GitHub</a>
+<a href="https://github.com/buzzpi" target="_blank" class="btn btn-secondary">Read the Books</a>
+<a href="https://github.com/buzzpi" target="_blank" class="btn btn-secondary">Join the Community</a>
+</div>
+</div></section>
+
+<footer><div class="container">
+<a href="#" class="logo"><svg viewBox="0 0 28 28" fill="none"><rect x="2" y="2" width="24" height="24" rx="6" stroke="#3b82f6" stroke-width="2"/><circle cx="14" cy="14" r="3" fill="#3b82f6"/><path d="M14 5v4M14 19v4M5 14h4M19 14h4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg> BuzzPi</a>
+<div class="footer-links">
+<a href="https://github.com/buzzpi" target="_blank">GitHub</a>
+<a href="#">Documentation</a>
+<a href="#">Community</a>
+<a href="#">MIT License</a>
+</div>
+</div></footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.fade-in').forEach(function(el) {
+    observer.observe(el);
+  });
+});
+</script>
+</body>
+</html>

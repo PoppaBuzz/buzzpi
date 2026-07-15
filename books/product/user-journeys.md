@@ -11,7 +11,7 @@ These journeys describe the complete end-to-end experience for each persona. The
 
 ### Step 1: Discovery
 
-Sarah hears about BuzzPi from a blog post. She visits buzzpi.dev and sees:
+Sarah hears about BuzzPi from a blog post. She visits jphat.net and sees:
 - "Manage all your Raspberry Pis from one place"
 - "No IP addresses needed"
 - "Terminal, screen, and services — on your phone"
@@ -34,7 +34,7 @@ She opens the app and sees: **"No devices yet."**
 The app prompts her to install BuzzPi Runtime on her Pi. It gives her a one-line command:
 
 ```
-curl -sSL https://buzzpi.dev/install | bash
+curl -sSL https://jphat.net/install | bash
 ```
 
 She SSHes into her new Pi 5, pastes the command. It installs in 15 seconds. The Runtime starts automatically and prints a pairing code.

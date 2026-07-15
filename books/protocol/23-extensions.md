@@ -186,10 +186,10 @@ Extensions are distributed through the BuzzPi Extension Registry:
 
 | Endpoint | Purpose |
 |----------|---------|
-| `registry.buzzpi.dev/v1/extensions` | List all extensions |
-| `registry.buzzpi.dev/v1/extensions/{id}` | Extension details |
-| `registry.buzzpi.dev/v1/extensions/{id}/download/{version}` | Download package |
-| `registry.buzzpi.dev/v1/extensions/{id}/versions` | Version history |
+| `jphat.net/buzzpi/registry/v1/extensions` | List all extensions |
+| `jphat.net/buzzpi/registry/v1/extensions/{id}` | Extension details |
+| `jphat.net/buzzpi/registry/v1/extensions/{id}/download/{version}` | Download package |
+| `jphat.net/buzzpi/registry/v1/extensions/{id}/versions` | Version history |
 
 ### Installation Flow
 

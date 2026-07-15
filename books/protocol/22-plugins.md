@@ -22,7 +22,7 @@ version: 1.0.0
 author: BuzzPi Core
 description: Manage Docker containers and images on your device
 license: MIT
-homepage: https://buzzpi.dev/extensions/docker-manager
+homepage: https://jphat.net/extensions/docker-manager
 
 runtime:
   type: binary
@@ -213,7 +213,7 @@ Runtime                          Plugin
 
 Plugins are distributed through the BuzzPi Extension Registry (a service of BuzzPi Cloud):
 
-1. Developer publishes plugin to `registry.buzzpi.dev`
+1. Developer publishes plugin to `jphat.net/buzzpi/registry`
 2. Plugin is signed with the developer's key
 3. User installs from the app's extension browser
 4. Runtime downloads, verifies, and extracts the plugin

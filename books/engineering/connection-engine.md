@@ -24,7 +24,7 @@ When Runtime starts, it opens a persistent outbound WebSocket connection to the 
 
 ```yaml
 WebSocket handshake:
-  url: wss://relay.buzzpi.dev/ws
+  url: wss://jphat.net/buzzpi/relay/ws
   headers:
     X-Device-ID: <device_id>
     X-Auth-Token: <session_token>
@@ -46,7 +46,7 @@ When the user opens the app, it opens its own persistent WebSocket to the Relay 
 
 ```yaml
 WebSocket handshake:
-  url: wss://relay.buzzpi.dev/ws
+  url: wss://jphat.net/buzzpi/relay/ws
   headers:
     X-User-ID: <user_id>
     X-Auth-Token: <auth_token>
@@ -72,7 +72,7 @@ WebRTC configuration:
   ICE_servers:
     - stun:stun.l.google.com:19302
     - stun:stun1.l.google.com:19302
-    - turn:turn.buzzpi.dev:3478 (relay fallback)
+    - turn:jphat.net/buzzpi/turn:3478 (relay fallback)
     
   media:
     data_channel: true           # Bidirectional data

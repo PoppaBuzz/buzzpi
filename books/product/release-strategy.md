@@ -161,7 +161,7 @@ graph LR
 
 | Channel | Method | Audience |
 |---------|--------|----------|
-| **Install script** | `curl -sS https://get.buzzpi.dev | bash` | All users (primary) |
+| **Install script** | `curl -sS https://jphat.net/buzzpi/install | bash` | All users (primary) |
 | **GitHub Releases** | Pre-built binaries per architecture | Developers, CI |
 | **APT repository** | `apt install buzzpi-runtime` (future) | ARM Linux users |
 | **Docker** | `docker run buzzpi/runtime` (future) | Container users |
@@ -245,7 +245,7 @@ During v0.x.y, the Runtime upgrades in-place:
 buzzpi-runtime upgrade
 
 # Manual upgrade
-curl -sS https://get.buzzpi.dev | bash
+curl -sS https://jphat.net/buzzpi/install | bash
 ```
 
 ### Android App Upgrades

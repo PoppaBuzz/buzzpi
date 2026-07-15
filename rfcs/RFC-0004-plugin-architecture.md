@@ -375,7 +375,7 @@ buzzpi plugin install ./docker-manager-1.2.0.buzzpi-plugin
 buzzpi plugin install docker-manager
 ```
 
-**Registry URL:** `https://plugins.buzzpi.dev/v1/{plugin-id}/{version}`
+**Registry URL:** `https://jphat.net/buzzpi/plugins/v1/{plugin-id}/{version}`
 
 ### 8. Built-in vs Plugin Capabilities
 
@@ -478,7 +478,7 @@ Configuration is stored in the Runtime's State Store and exposed to the user thr
 | P1 | Go SDK | `sdk-go` package with `Serve()`, capability routing, logging |
 | P2 | Manifest system | `plugin.yaml` validation, capability registration |
 | P3 | Permissions | seccomp/landlock enforcement, filesystem sandboxing |
-| P4 | Registry | plugin.buzzpi.dev, `buzzpi plugin install/search/update` commands |
+| P4 | Registry | plugin.jphat.net, `buzzpi plugin install/search/update` commands |
 | P5 | Python SDK | `buzzpi-sdk` PyPI package, event push support |
 | P6 | Ecosystem | Plugin certification process, CI for plugin authors |
 

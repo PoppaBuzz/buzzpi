@@ -32,8 +32,8 @@ BuzzPi is NOT:
 When using BuzzPi in your own projects:
 
 ```
-Built with [BuzzPi](https://buzzpi.dev)
-Uses the [BuzzPi Protocol](https://bpp.buzzpi.dev)
+Built with [BuzzPi](https://jphat.net)
+Uses the [BuzzPi Protocol](https://jphat.net/buzzpi/bpp)
 ```
 
 ---
@@ -186,7 +186,7 @@ You may NOT:
 Official brand assets are available at:
 
 ```
-https://buzzpi.dev/brand/
+https://jphat.net/brand/
 ```
 
 Includes:

@@ -1,6 +1,6 @@
 # BuzzPi Platform — Your Raspberry Pi. Anywhere. Instantly.
 
-**v0.0.0** — The architecture exists.
+**v0.1.0** — First end-to-end system. Agent, Android, terminal, file manager, screen viewer.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Status: Foundation](https://img.shields.io/badge/status-foundation-yellow)](books/product/roadmap.md)
@@ -83,7 +83,7 @@ v0.0.0 declares that the project began when the architecture began, not when the
 
 ## Project Status
 
-Foundation phase. See the [roadmap](books/product/roadmap.md) for details.
+v0.1.0 — First end-to-end system. See the [roadmap](books/product/roadmap.md) for details.
 
 ---
 

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BuzzPi in-app logo: honeycomb hexagon with bee -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Outer honeycomb hexagon (filled) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeWidth="2"
+        android:strokeColor="#669D2E"
+        android:pathData="M60,16L95.12,36L95.12,76L60,96L24.88,76L24.88,36Z" />
+
+    <!-- Hexagon filled slightly -->
+    <path
+        android:fillColor="#669D2E"
+        android:fillAlpha="0.06"
+        android:pathData="M60,16L95.12,36L95.12,76L60,96L24.88,76L24.88,36Z" />
+
+    <!-- Bee body -->
+    <path
+        android:fillColor="#669D2E"
+        android:pathData="M50,60C50,51 70,51 70,60C70,69 50,69 50,60Z" />
+
+    <!-- Bee stripes (dark) -->
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M49,55L57,55L57,56L49,56Z" />
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M63,55L71,55L71,56L63,56Z" />
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M49,60L57,60L57,61L49,61Z" />
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M63,60L71,60L71,61L63,61Z" />
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M50,65L58,65L58,66L50,66Z" />
+    <path
+        android:fillColor="#0A0E17"
+        android:pathData="M62,65L70,65L70,66L62,66Z" />
+
+    <!-- Wings -->
+    <path
+        android:fillColor="#669D2E"
+        android:fillAlpha="0.5"
+        android:pathData="M44,49A8,7 0,1,1 46,48" />
+    <path
+        android:fillColor="#669D2E"
+        android:fillAlpha="0.5"
+        android:pathData="M74,49A8,7 0,1,1 76,48" />
+
+    <!-- Stinger -->
+    <path
+        android:fillColor="#669D2E"
+        android:pathData="M60,69L60,76L63,72Z" />
+
+    <!-- Antennae -->
+    <path
+        android:fillColor="#669D2E"
+        android:strokeWidth="1.5"
+        android:pathData="M52,53C50,48 46,46 44,45" />
+    <path
+        android:fillColor="#669D2E"
+        android:strokeWidth="1.5"
+        android:pathData="M68,53C70,48 74,46 76,45" />
+
+    <!-- Small dots at antennae tips -->
+    <path
+        android:fillColor="#669D2E"
+        android:pathData="M44,45A1.5,1.5 0,1,1 44,44.9" />
+    <path
+        android:fillColor="#669D2E"
+        android:pathData="M76,45A1.5,1.5 0,1,1 76,44.9" />
+
+</vector>

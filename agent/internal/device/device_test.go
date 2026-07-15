@@ -4,16 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/buzzpi/agent/internal/config"
 )
 
+const testDeviceID = "test_device_abc123"
+
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	cfg := config.DefaultConfig()
-	s, err := NewService(cfg, slog.Default())
+	s, err := NewService(cfg, testDeviceID, slog.Default())
 	if err != nil {
 		t.Fatalf("NewService() failed: %v", err)
 	}
@@ -33,7 +36,7 @@ func TestNewService(t *testing.T) {
 
 	t.Run("with nil logger", func(t *testing.T) {
 		cfg := config.DefaultConfig()
-		s, err := NewService(cfg, nil)
+		s, err := NewService(cfg, testDeviceID, nil)
 		if err != nil {
 			t.Fatalf("NewService(nil logger) failed: %v", err)
 		}
@@ -56,8 +59,8 @@ func TestHandleInfo(t *testing.T) {
 		t.Fatalf("HandleInfo() returned %T, want *InfoResponse", resp)
 	}
 
-	if info.DeviceID != "dev_unknown" {
-		t.Errorf("DeviceID = %q, want \"dev_unknown\"", info.DeviceID)
+	if info.DeviceID != testDeviceID {
+		t.Errorf("DeviceID = %q, want %q", info.DeviceID, testDeviceID)
 	}
 	if info.Model != "raspberry-pi/5" {
 		t.Errorf("Model = %q, want \"raspberry-pi/5\"", info.Model)
@@ -86,7 +89,7 @@ func TestHandleInfoFriendlyName(t *testing.T) {
 	t.Run("uses device_name from config", func(t *testing.T) {
 		cfg := config.DefaultConfig()
 		cfg.Runtime.DeviceName = "MyBuzzPi"
-		s, err := NewService(cfg, slog.Default())
+		s, err := NewService(cfg, testDeviceID, slog.Default())
 		if err != nil {
 			t.Fatalf("NewService() failed: %v", err)
 		}
@@ -98,6 +101,24 @@ func TestHandleInfoFriendlyName(t *testing.T) {
 		info := resp.(*InfoResponse)
 		if info.FriendlyName != "MyBuzzPi" {
 			t.Errorf("FriendlyName = %q, want \"MyBuzzPi\"", info.FriendlyName)
+		}
+	})
+
+	t.Run("falls back to hostname when empty", func(t *testing.T) {
+		cfg := config.DefaultConfig()
+		cfg.Runtime.DeviceName = ""
+		s, err := NewService(cfg, testDeviceID, slog.Default())
+		if err != nil {
+			t.Fatalf("NewService() failed: %v", err)
+		}
+		resp, err := s.HandleInfo(context.Background(), json.RawMessage(`{}`))
+		if err != nil {
+			t.Fatalf("HandleInfo() failed: %v", err)
+		}
+		info := resp.(*InfoResponse)
+		hostname, _ := hostname()
+		if info.FriendlyName != hostname {
+			t.Errorf("FriendlyName = %q, want hostname %q", info.FriendlyName, hostname)
 		}
 	})
 }
@@ -144,6 +165,22 @@ func TestHandleStats(t *testing.T) {
 	}
 }
 
+func TestHandleStatsCallsReadCPUStatsTwice(t *testing.T) {
+	s := newTestService(t)
+	// First call to populate prevCPU baseline
+	s.HandleStats(context.Background(), json.RawMessage(`{}`))
+	// Second call should calculate delta
+	resp, err := s.HandleStats(context.Background(), json.RawMessage(`{}`))
+	if err != nil {
+		t.Fatalf("second HandleStats() failed: %v", err)
+	}
+	stats := resp.(*StatsResponse)
+	// On non-Linux this returns 0; on Linux it may return actual usage
+	if stats.CPU.UsagePercent < 0 {
+		t.Errorf("CPU.UsagePercent = %f, want >= 0", stats.CPU.UsagePercent)
+	}
+}
+
 func TestHealth(t *testing.T) {
 	s := newTestService(t)
 
@@ -182,5 +219,141 @@ func TestStartStop(t *testing.T) {
 	}
 	if err := s.Stop(context.Background()); err != nil {
 		t.Fatalf("Stop() failed: %v", err)
+	}
+}
+
+// --- Tests for unexported functions in procfs.go and diskstats.go ---
+
+func TestCalcPercent(t *testing.T) {
+	tests := []struct {
+		used, total int64
+		want        float64
+	}{
+		{0, 0, 0},
+		{0, 100, 0},
+		{50, 100, 50.0},
+		{1, 3, 33.3},
+		{100, 100, 100.0},
+		{250, 1000, 25.0},
+	}
+	for _, tt := range tests {
+		got := calcPercent(tt.used, tt.total)
+		if got != tt.want {
+			t.Errorf("calcPercent(%d, %d) = %f, want %f", tt.used, tt.total, got, tt.want)
+		}
+	}
+}
+
+func TestParseMeminfoValue(t *testing.T) {
+	tests := []struct {
+		line string
+		want int64
+	}{
+		{"MemTotal:       16384000 kB", 16384000},
+		{"MemAvailable:   8192000 kB", 8192000},
+		{"MemTotal:", 0},           // no value
+		{"", 0},                     // empty
+		{"just text", 0},            // no numeric
+		{"key:  42 kB", 42},        // extra fields
+	}
+	for _, tt := range tests {
+		got := parseMeminfoValue(tt.line)
+		if got != tt.want {
+			t.Errorf("parseMeminfoValue(%q) = %d, want %d", tt.line, got, tt.want)
+		}
+	}
+}
+
+func TestReadDiskStatsNonLinux(t *testing.T) {
+	if isLinux {
+		t.Skip("running on Linux, readDiskStats returns real data")
+	}
+	disks := readDiskStats()
+	if len(disks) != 0 {
+		t.Errorf("readDiskStats() on non-Linux returned %d entries, want 0", len(disks))
+	}
+}
+
+func TestReadNetworkStatsNonLinux(t *testing.T) {
+	if isLinux {
+		t.Skip("running on Linux")
+	}
+	ifaces := readNetworkStats()
+	if len(ifaces) != 0 {
+		t.Errorf("readNetworkStats() on non-Linux returned %d entries, want 0", len(ifaces))
+	}
+}
+
+func TestReadMemoryStatsNonLinux(t *testing.T) {
+	if isLinux {
+		t.Skip("running on Linux")
+	}
+	total, used, avail, pct := readMemoryStats()
+	if total != 0 || used != 0 || avail != 0 || pct != 0 {
+		t.Errorf("readMemoryStats() on non-Linux = (%d, %d, %d, %f), want all zeros", total, used, avail, pct)
+	}
+}
+
+func TestReadCPUStatsNonLinux(t *testing.T) {
+	if isLinux {
+		t.Skip("running on Linux")
+	}
+	s := newTestService(t)
+	usage, temp, freq := s.readCPUStats()
+	if usage != 0 || temp != 0 || freq != 0 {
+		t.Errorf("readCPUStats() on non-Linux = (%f, %f, %d), want all zeros", usage, temp, freq)
+	}
+}
+
+func TestReadCPUTemperatureNonLinux(t *testing.T) {
+	if isLinux {
+		t.Skip("running on Linux")
+	}
+	temp := readCPUTemperature()
+	if temp != 0 {
+		t.Errorf("readCPUTemperature() on non-Linux = %f, want 0", temp)
+	}
+}
+
+func TestReadCPUFrequencyNonLinux(t *testing.T) {
+	if isLinux {
+		t.Skip("running on Linux")
+	}
+	freq := readCPUFrequency()
+	if freq != 0 {
+		t.Errorf("readCPUFrequency() on non-Linux = %d, want 0", freq)
+	}
+}
+
+// hostname helper to match device.go's use of os.Hostname()
+func hostname() (string, error) {
+	return os_hostname()
+}
+
+// Expose os.Hostname for tests
+var os_hostname = os.Hostname
+
+func TestServiceFriendlyNameFallback(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Runtime.DeviceName = ""
+	s, err := NewService(cfg, "dev_test", slog.Default())
+	if err != nil {
+		t.Fatalf("NewService() failed: %v", err)
+	}
+	name := s.friendlyName()
+	if name == "" {
+		t.Error("friendlyName() should return hostname when DeviceName is empty")
+	}
+}
+
+func TestServiceFriendlyNameFromConfig(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Runtime.DeviceName = "CustomName"
+	s, err := NewService(cfg, "dev_test", slog.Default())
+	if err != nil {
+		t.Fatalf("NewService() failed: %v", err)
+	}
+	if s.friendlyName() != "CustomName" {
+		t.Errorf("friendlyName() = %q, want \"CustomName\"", s.friendlyName())
 	}
 }
