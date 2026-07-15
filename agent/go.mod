@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/creack/pty v1.1.23 // indirect
 	github.com/miekg/dns v1.1.41 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
