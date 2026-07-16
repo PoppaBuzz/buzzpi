@@ -87,8 +87,28 @@ func (a *Advertiser) Start(ctx context.Context) error {
 		return fmt.Errorf("create mDNS service: %w", err)
 	}
 
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return fmt.Errorf("list network interfaces: %w", err)
+	}
+	var mdnsIface *net.Interface
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		if iface.Flags&net.FlagMulticast != 0 {
+			mdnsIface = &iface
+			break
+		}
+	}
+	if mdnsIface == nil {
+		return fmt.Errorf("no suitable multicast interface found")
+	}
+	a.log.Info("mDNS interface selected", "name", mdnsIface.Name)
+
 	server, err := mdns.NewServer(&mdns.Config{
 		Zone: service,
+		Iface: mdnsIface,
 	})
 	if err != nil {
 		return fmt.Errorf("start mDNS server: %w", err)
