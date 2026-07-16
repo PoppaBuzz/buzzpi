@@ -3,6 +3,7 @@ package com.jphat.buzzpi.data.discovery
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import android.net.wifi.WifiManager
 import android.util.Log
 import com.jphat.buzzpi.domain.model.Device
 import com.jphat.buzzpi.domain.model.Transport
@@ -15,17 +16,42 @@ class MdnsDiscovery(private val context: Context) {
     companion object {
         private const val TAG = "MdnsDiscovery"
         private const val SERVICE_TYPE = "_buzzpi._tcp"
-        private const val DEFAULT_PORT = 8080
+        private const val DEFAULT_PORT = 8420
     }
 
     private var nsdManager: NsdManager? = null
     private var activeDiscovery: NsdManager.DiscoveryListener? = null
+    private var multicastLock: WifiManager.MulticastLock? = null
     private val _discoveredDevices = MutableStateFlow<List<Device>>(emptyList())
     val discoveredDevices: Flow<List<Device>> = _discoveredDevices.asStateFlow()
     private val discoveredServices = mutableMapOf<String, NsdServiceInfo>()
 
+    private fun acquireMulticastLock() {
+        try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            multicastLock = wifiManager?.createMulticastLock("buzzpi_mdns")?.apply {
+                setReferenceCounted(true)
+                acquire()
+            }
+            Log.d(TAG, "Multicast lock acquired: ${multicastLock != null}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to acquire multicast lock: ${e.message}")
+        }
+    }
+
+    private fun releaseMulticastLock() {
+        try {
+            multicastLock?.release()
+            multicastLock = null
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to release multicast lock: ${e.message}")
+        }
+    }
+
     fun startDiscovery() {
         stopDiscovery()
+        acquireMulticastLock()
+
         nsdManager = context.getSystemService(Context.NSD_SERVICE) as? NsdManager
         if (nsdManager == null) {
             Log.w(TAG, "NSD not available on this device")
@@ -39,9 +65,9 @@ class MdnsDiscovery(private val context: Context) {
 
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
                 Log.d(TAG, "Service found: ${serviceInfo.serviceName} (${serviceInfo.serviceType})")
-                if (serviceInfo.serviceType != SERVICE_TYPE) return
+                val foundType = serviceInfo.serviceType?.trimEnd('.')
+                if (foundType != SERVICE_TYPE) return
 
-                // Resolve to get IP address
                 @Suppress("DEPRECATION")
                 nsdManager?.resolveService(serviceInfo, object : NsdManager.ResolveListener {
                     override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
@@ -97,6 +123,7 @@ class MdnsDiscovery(private val context: Context) {
             }
         }
         activeDiscovery = null
+        releaseMulticastLock()
     }
 
     @Suppress("DEPRECATION")
@@ -110,7 +137,7 @@ class MdnsDiscovery(private val context: Context) {
             deviceId = txtRecords["device_id"] ?: info.serviceName,
             friendlyName = txtRecords["friendly_name"] ?: info.serviceName,
             platform = txtRecords["platform"] ?: "",
-            runtimeVersion = txtRecords["version"] ?: "",
+            runtimeVersion = txtRecords["runtime_version"] ?: txtRecords["version"] ?: "",
             capabilities = (txtRecords["capabilities"] ?: "").split(",").filter { it.isNotBlank() },
             isOnline = true,
             transport = Transport.LAN,
