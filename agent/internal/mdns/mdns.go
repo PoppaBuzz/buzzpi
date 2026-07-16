@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -74,14 +75,19 @@ func (a *Advertiser) Start(ctx context.Context) error {
 	}
 	a.log.Info("mDNS interface selected", "name", iface.Name, "ip", ip)
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "buzzpi"
+	}
+
 	server, err := zeroconf.RegisterProxy(
-		a.info.FriendlyName, // instance name
-		ServiceType,         // service type (without dot)
-		"local.",            // domain
-		a.info.Port,         // port
-		"",                  // hostname (empty = auto)
-		[]string{ip.String()}, // IP addresses as strings
-		txtRecords,          // TXT records
+		a.info.FriendlyName,
+		ServiceType,
+		"local.",
+		a.info.Port,
+		hostname,
+		[]string{ip.String()},
+		txtRecords,
 		[]net.Interface{*iface},
 	)
 	if err != nil {
