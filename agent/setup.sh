@@ -23,7 +23,7 @@ set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────
 BUZZPI_VERSION="${BUZZPI_VERSION:-latest}"
-BUZZPI_REPO="${BUZZPI_REPO:-buzzpi/buzzpi}"
+BUZZPI_REPO="${BUZZPI_REPO:-PoppaBuzz/buzzpi}"
 GITHUB_API="https://api.github.com/repos/${BUZZPI_REPO}/releases"
 
 # ── Colors ───────────────────────────────────────────────────────────
@@ -113,25 +113,29 @@ DOWNLOAD_DIR=$(mktemp -d)
 trap "rm -rf ${DOWNLOAD_DIR}" EXIT
 
 if [[ "$BUZZPI_VERSION" == "nightly" ]]; then
-    # Download from GitHub Actions or nightly builds
-    DOWNLOAD_URL="https://github.com/${BUZZPI_REPO}/releases/download/nightly/buzzpi-runtime-linux-${ARCH_NAME}"
-else
-    DOWNLOAD_URL="https://github.com/${BUZZPI_REPO}/releases/download/${BUZZPI_VERSION}/buzzpi-runtime-linux-${ARCH_NAME}"
+    die "Nightly builds are not yet available.\n\nInstall a specific version: BUZZPI_VERSION=v0.1.0 sudo bash setup.sh"
 fi
+
+ARCHIVE_NAME="buzzpi-runtime-linux-${ARCH_NAME}.tar.gz"
+DOWNLOAD_URL="https://github.com/${BUZZPI_REPO}/releases/download/${BUZZPI_VERSION}/${ARCHIVE_NAME}"
 
 BINARY_PATH="${DOWNLOAD_DIR}/buzzpi-runtime"
 
 echo -n "  Downloading from ${DOWNLOAD_URL}... "
-if curl -fsSL -o "$BINARY_PATH" "$DOWNLOAD_URL" 2>/dev/null; then
+if curl -fsSL -o "${DOWNLOAD_DIR}/${ARCHIVE_NAME}" "$DOWNLOAD_URL" 2>/dev/null; then
     echo -e "${GREEN}done${NC}"
-elif wget -q -O "$BINARY_PATH" "$DOWNLOAD_URL" 2>/dev/null; then
+elif wget -q -O "${DOWNLOAD_DIR}/${ARCHIVE_NAME}" "$DOWNLOAD_URL" 2>/dev/null; then
     echo -e "${GREEN}done${NC}"
 else
     echo -e "${RED}failed${NC}"
     die "Could not download BuzzPi binary.\n\nURL: ${DOWNLOAD_URL}\n\nIf this is a new release, the binary may not be published yet.\nTry building from source: make cross-runtime-${ARCH_NAME}"
 fi
 
+echo -n "  Extracting... "
+tar xzf "${DOWNLOAD_DIR}/${ARCHIVE_NAME}" -C "${DOWNLOAD_DIR}"
+mv "${DOWNLOAD_DIR}/buzzpi-runtime-linux-${ARCH_NAME}" "$BINARY_PATH"
 chmod +x "$BINARY_PATH"
+echo -e "${GREEN}done${NC}"
 info "Binary downloaded ($(du -h "$BINARY_PATH" | cut -f1))"
 
 # ── Create user ──────────────────────────────────────────────────────
