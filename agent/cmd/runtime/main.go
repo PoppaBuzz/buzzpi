@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -87,7 +88,7 @@ func main() {
 	defer store.Close()
 	logger.Info("state store opened", "path", *dbPath)
 
-	idPath := identity.IdentityPath(*dbPath)
+	idPath := identity.IdentityPath(filepath.Dir(*dbPath))
 	devID, err := identity.Ensure(idPath)
 	if err != nil {
 		logger.Error("failed to load device identity", "error", err, "path", idPath)
