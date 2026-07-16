@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"os"
 	"sync"
 	"time"
 
@@ -163,6 +164,13 @@ func (h *Handler) HandleInitiate(ctx context.Context, params json.RawMessage) (i
 		"client", req.ClientName,
 		"session", sessionID,
 	)
+	fmt.Fprintf(os.Stderr, "\n╔══════════════════════════════════════╗\n")
+	fmt.Fprintf(os.Stderr, "║        BUZZPI PAIRING PIN           ║\n")
+	fmt.Fprintf(os.Stderr, "╠══════════════════════════════════════╣\n")
+	fmt.Fprintf(os.Stderr, "║                                      ║\n")
+	fmt.Fprintf(os.Stderr, "║            %s              ║\n", pin)
+	fmt.Fprintf(os.Stderr, "║                                      ║\n")
+	fmt.Fprintf(os.Stderr, "╚══════════════════════════════════════╝\n\n")
 
 	return &PairInitiateResult{
 		Method:    "pin",
