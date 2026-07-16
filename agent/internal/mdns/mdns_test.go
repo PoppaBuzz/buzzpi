@@ -2,9 +2,10 @@ package mdns
 
 import (
 	"log/slog"
+	"net"
 	"testing"
 
-	"github.com/hashicorp/mdns"
+	"github.com/grandcat/zeroconf"
 )
 
 func TestServiceType(t *testing.T) {
@@ -104,15 +105,14 @@ func TestParseEntryNil(t *testing.T) {
 }
 
 func TestParseEntryValid(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name: "test-pi",
-		Port: 8080,
-		InfoFields: []string{
-			"device_id=dev_abc123",
-			"friendly_name=test-pi",
-			"runtime_version=v0.1.0",
-			"platform=linux/arm64",
-		},
+	entry := zeroconf.NewServiceEntry("test-pi", ServiceType, "local.")
+	entry.Port = 8080
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.100")}
+	entry.Text = []string{
+		"device_id=dev_abc123",
+		"friendly_name=test-pi",
+		"runtime_version=v0.1.0",
+		"platform=linux/arm64",
 	}
 	dev := parseEntry(entry)
 	if dev == nil {
@@ -136,11 +136,10 @@ func TestParseEntryValid(t *testing.T) {
 }
 
 func TestParseEntryNoDeviceID(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name: "no-id",
-		InfoFields: []string{
-			"friendly_name=no-id",
-		},
+	entry := zeroconf.NewServiceEntry("no-id", ServiceType, "local.")
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.101")}
+	entry.Text = []string{
+		"friendly_name=no-id",
 	}
 	dev := parseEntry(entry)
 	if dev != nil {
@@ -148,37 +147,35 @@ func TestParseEntryNoDeviceID(t *testing.T) {
 	}
 }
 
-func TestParseEntryEmptyInfoFields(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name:       "empty-fields",
-		InfoFields: []string{},
-	}
+func TestParseEntryEmptyText(t *testing.T) {
+	entry := zeroconf.NewServiceEntry("empty-fields", ServiceType, "local.")
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.102")}
+	entry.Text = []string{}
 	dev := parseEntry(entry)
+	// Empty text but no device_id means nil
 	if dev != nil {
-		t.Error("parseEntry(empty InfoFields) should return nil")
+		t.Error("parseEntry(empty Text) should return nil")
 	}
 }
 
-func TestParseEntryNilInfoFields(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name:       "nil-fields",
-		InfoFields: nil,
-	}
+func TestParseEntryNilText(t *testing.T) {
+	entry := zeroconf.NewServiceEntry("nil-fields", ServiceType, "local.")
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.103")}
+	entry.Text = nil
 	dev := parseEntry(entry)
 	if dev != nil {
-		t.Error("parseEntry(nil InfoFields) should return nil")
+		t.Error("parseEntry(nil Text) should return nil")
 	}
 }
 
 func TestParseEntryMalformed(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name: "weird",
-		InfoFields: []string{
-			"device_id=dev_xyz",
-			"nope",
-			"=badval",
-			"",
-		},
+	entry := zeroconf.NewServiceEntry("weird", ServiceType, "local.")
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.104")}
+	entry.Text = []string{
+		"device_id=dev_xyz",
+		"nope",
+		"=badval",
+		"",
 	}
 	dev := parseEntry(entry)
 	if dev == nil {
@@ -190,10 +187,9 @@ func TestParseEntryMalformed(t *testing.T) {
 }
 
 func TestParseEntrySingleEquals(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name:       "eq-only",
-		InfoFields: []string{"="},
-	}
+	entry := zeroconf.NewServiceEntry("eq-only", ServiceType, "local.")
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.105")}
+	entry.Text = []string{"="}
 	dev := parseEntry(entry)
 	if dev != nil {
 		t.Error("parseEntry(only equals) should return nil")
@@ -201,23 +197,21 @@ func TestParseEntrySingleEquals(t *testing.T) {
 }
 
 func TestParseEntrySingleChar(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name:       "single-char",
-		InfoFields: []string{"a"},
-	}
+	entry := zeroconf.NewServiceEntry("single-char", ServiceType, "local.")
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.106")}
+	entry.Text = []string{"a"}
 	dev := parseEntry(entry)
 	if dev != nil {
 		t.Error("parseEntry(single char) should return nil")
 	}
 }
 
-func TestParseEntryFriendlyNameFromName(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name: "my-pi-name",
-		Port: 9090,
-		InfoFields: []string{
-			"device_id=dev_from_name",
-		},
+func TestParseEntryFriendlyNameFromInstance(t *testing.T) {
+	entry := zeroconf.NewServiceEntry("my-pi-name", ServiceType, "local.")
+	entry.Port = 9090
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.107")}
+	entry.Text = []string{
+		"device_id=dev_from_name",
 	}
 	dev := parseEntry(entry)
 	if dev == nil {
@@ -229,12 +223,11 @@ func TestParseEntryFriendlyNameFromName(t *testing.T) {
 }
 
 func TestParseEntryValueWithEquals(t *testing.T) {
-	entry := &mdns.ServiceEntry{
-		Name: "eq-in-val",
-		Port: 8080,
-		InfoFields: []string{
-			"device_id=dev_with=equals",
-		},
+	entry := zeroconf.NewServiceEntry("eq-in-val", ServiceType, "local.")
+	entry.Port = 8080
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.108")}
+	entry.Text = []string{
+		"device_id=dev_with=equals",
 	}
 	dev := parseEntry(entry)
 	if dev == nil {
@@ -242,5 +235,53 @@ func TestParseEntryValueWithEquals(t *testing.T) {
 	}
 	if dev.DeviceID != "dev_with=equals" {
 		t.Errorf("DeviceID = %q, want \"dev_with=equals\"", dev.DeviceID)
+	}
+}
+
+func TestParseEntryNoIP(t *testing.T) {
+	entry := zeroconf.NewServiceEntry("no-ip", ServiceType, "local.")
+	entry.Port = 8080
+	entry.Text = []string{
+		"device_id=dev_no_ip",
+	}
+	dev := parseEntry(entry)
+	if dev != nil {
+		t.Error("parseEntry(no IP) should return nil")
+	}
+}
+
+func TestParseEntryIPv6Only(t *testing.T) {
+	entry := zeroconf.NewServiceEntry("ipv6-only", ServiceType, "local.")
+	entry.Port = 8080
+	entry.AddrIPv6 = []net.IP{net.ParseIP("fe80::1")}
+	entry.Text = []string{
+		"device_id=dev_ipv6",
+	}
+	dev := parseEntry(entry)
+	if dev == nil {
+		t.Fatal("parseEntry(IPv6) returned nil")
+	}
+	if !dev.Addr.Equal(net.ParseIP("fe80::1")) {
+		t.Errorf("Addr = %v, want fe80::1", dev.Addr)
+	}
+}
+
+func TestParseEntryCapabilities(t *testing.T) {
+	entry := zeroconf.NewServiceEntry("caps", ServiceType, "local.")
+	entry.Port = 8080
+	entry.AddrIPv4 = []net.IP{net.ParseIP("192.168.1.109")}
+	entry.Text = []string{
+		"device_id=dev_caps",
+		"capabilities=terminal,files,docker",
+	}
+	dev := parseEntry(entry)
+	if dev == nil {
+		t.Fatal("parseEntry returned nil")
+	}
+	if len(dev.Capabilities) != 3 {
+		t.Fatalf("Capabilities len = %d, want 3", len(dev.Capabilities))
+	}
+	if dev.Capabilities[0] != "terminal" || dev.Capabilities[1] != "files" || dev.Capabilities[2] != "docker" {
+		t.Errorf("Capabilities = %v", dev.Capabilities)
 	}
 }

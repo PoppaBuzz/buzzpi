@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"time"
 
-	"github.com/hashicorp/mdns"
+	"github.com/grandcat/zeroconf"
 )
 
 // ServiceType is the mDNS service type for BuzzPi.
@@ -28,7 +29,7 @@ type ServiceInfo struct {
 
 // Advertiser announces a BuzzPi device on the local network via mDNS.
 type Advertiser struct {
-	server  *mdns.Server
+	server  *zeroconf.Server
 	info    *ServiceInfo
 	log     *slog.Logger
 	closeCh chan struct{}
@@ -56,62 +57,35 @@ func (a *Advertiser) Start(ctx context.Context) error {
 	}
 
 	if len(a.info.Capabilities) > 0 {
-		caps := ""
-		for i, c := range a.info.Capabilities {
-			if i > 0 {
-				caps += ","
-			}
-			caps += c
-		}
+		caps := strings.Join(a.info.Capabilities, ",")
 		txtRecords = append(txtRecords, fmt.Sprintf("capabilities=%s", caps))
 	}
 
-	host, _ := net.InterfaceAddrs()
-	_ = host // TODO: get primary IP
-
-	var ips []net.IP
-	if ip, err := getPrimaryIP(); err == nil {
-		ips = []net.IP{ip}
+	// Get the primary IP address.
+	ip, err := getPrimaryIP()
+	if err != nil {
+		return fmt.Errorf("get primary IP: %w", err)
 	}
 
-	service, err := mdns.NewMDNSService(
-		a.info.FriendlyName,
-		ServiceType+".",
-		"local.",
-		"",
-		a.info.Port,
-		ips,
-		txtRecords,
+	// Get the network interface for the primary IP.
+	iface, err := getInterfaceForIP(ip)
+	if err != nil {
+		return fmt.Errorf("get interface for IP: %w", err)
+	}
+	a.log.Info("mDNS interface selected", "name", iface.Name, "ip", ip)
+
+	server, err := zeroconf.RegisterProxy(
+		a.info.FriendlyName, // instance name
+		ServiceType,         // service type (without dot)
+		"local.",            // domain
+		a.info.Port,         // port
+		"",                  // hostname (empty = auto)
+		[]string{ip.String()}, // IP addresses as strings
+		txtRecords,          // TXT records
+		[]net.Interface{*iface},
 	)
 	if err != nil {
-		return fmt.Errorf("create mDNS service: %w", err)
-	}
-
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return fmt.Errorf("list network interfaces: %w", err)
-	}
-	var mdnsIface *net.Interface
-	for _, iface := range ifaces {
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-		if iface.Flags&net.FlagMulticast != 0 {
-			mdnsIface = &iface
-			break
-		}
-	}
-	if mdnsIface == nil {
-		return fmt.Errorf("no suitable multicast interface found")
-	}
-	a.log.Info("mDNS interface selected", "name", mdnsIface.Name)
-
-	server, err := mdns.NewServer(&mdns.Config{
-		Zone: service,
-		Iface: mdnsIface,
-	})
-	if err != nil {
-		return fmt.Errorf("start mDNS server: %w", err)
+		return fmt.Errorf("register mDNS service: %w", err)
 	}
 
 	a.server = server
@@ -119,6 +93,7 @@ func (a *Advertiser) Start(ctx context.Context) error {
 		"service", ServiceType,
 		"name", a.info.FriendlyName,
 		"port", a.info.Port,
+		"ip", ip,
 	)
 
 	return nil
@@ -127,9 +102,7 @@ func (a *Advertiser) Start(ctx context.Context) error {
 // Stop shuts down the mDNS advertiser and sends a goodbye packet.
 func (a *Advertiser) Stop(ctx context.Context) error {
 	if a.server != nil {
-		if err := a.server.Shutdown(); err != nil {
-			return fmt.Errorf("stop mDNS: %w", err)
-		}
+		a.server.Shutdown()
 		a.server = nil
 	}
 	a.log.Info("mDNS advertiser stopped")
@@ -149,7 +122,29 @@ func getPrimaryIP() (net.IP, error) {
 			return ipNet.IP, nil
 		}
 	}
-	return nil, fmt.Errorf("no suitable IP address found")
+	return nil, fmt.Errorf("no suitable IPv4 address found")
+}
+
+func getInterfaceForIP(targetIP net.IP) (*net.Interface, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			if ipNet, ok := addr.(*net.IPNet); ok && ipNet.IP.Equal(targetIP) {
+				return &iface, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("no interface found for IP %s", targetIP)
 }
 
 // Health returns the advertiser's health status.
@@ -189,62 +184,72 @@ func NewBrowser(log *slog.Logger) *Browser {
 // Discover scans the local network for BuzzPi devices.
 // It blocks for the specified duration and returns all discovered devices.
 func (b *Browser) Discover(ctx context.Context, timeout time.Duration) ([]DiscoveredDevice, error) {
-	resultsCh := make(chan *mdns.ServiceEntry, 16)
+	resolver, err := zeroconf.NewResolver()
+	if err != nil {
+		return nil, fmt.Errorf("create mDNS resolver: %w", err)
+	}
+
+	entries := make(chan *zeroconf.ServiceEntry, 16)
 	var devices []DiscoveredDevice
 
 	done := make(chan struct{})
 	go func() {
-		for entry := range resultsCh {
+		defer close(done)
+		for entry := range entries {
 			dev := parseEntry(entry)
 			if dev != nil {
 				devices = append(devices, *dev)
 			}
 		}
-		close(done)
 	}()
 
-	// Start the mDNS query
-	mdns.Query(&mdns.QueryParam{
-		Service: ServiceType,
-		Domain:  "local",
-		Timeout: timeout,
-		Entries: resultsCh,
-	})
+	// Start browsing
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	if err := resolver.Browse(ctx, ServiceType, "local.", entries); err != nil {
+		return nil, fmt.Errorf("browse mDNS: %w", err)
+	}
 
 	<-done
 	return devices, nil
 }
 
-func parseEntry(entry *mdns.ServiceEntry) *DiscoveredDevice {
+func parseEntry(entry *zeroconf.ServiceEntry) *DiscoveredDevice {
 	if entry == nil {
 		return nil
 	}
 
 	dev := &DiscoveredDevice{
-		FriendlyName: entry.Name,
-		Addr:         entry.Addr,
+		FriendlyName: entry.Instance,
 		Port:         entry.Port,
 	}
 
-	for _, txt := range entry.InfoFields {
-		if len(txt) < 2 {
-			continue
-		}
-		// TXT records are key=value
-		for i := 0; i < len(txt)-1; i++ {
-			if txt[i] == '=' {
-				key := txt[:i]
-				val := txt[i+1:]
-				switch key {
-				case "device_id":
-					dev.DeviceID = val
-				case "friendly_name":
-					dev.FriendlyName = val
-				case "runtime_version":
-					dev.RuntimeVersion = val
-				case "platform":
-					dev.Platform = val
-				}
+	// Get IP address
+	if len(entry.AddrIPv4) > 0 {
+		dev.Addr = entry.AddrIPv4[0]
+	} else if len(entry.AddrIPv6) > 0 {
+		dev.Addr = entry.AddrIPv6[0]
+	} else {
+		return nil
+	}
+
+	// Parse TXT records
+	for _, txt := range entry.Text {
+		if i := strings.IndexByte(txt, '='); i > 0 {
+			key := txt[:i]
+			val := txt[i+1:]
+			switch key {
+			case "device_id":
+				dev.DeviceID = val
+			case "friendly_name":
+				dev.FriendlyName = val
+			case "runtime_version":
+				dev.RuntimeVersion = val
+			case "platform":
+				dev.Platform = val
+			case "capabilities":
+				dev.Capabilities = strings.Split(val, ",")
 			}
 		}
 	}
