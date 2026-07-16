@@ -69,11 +69,16 @@ func (a *Advertiser) Start(ctx context.Context) error {
 	host, _ := net.InterfaceAddrs()
 	_ = host // TODO: get primary IP
 
+	addr := ""
+	if ip, err := getPrimaryIP(); err == nil {
+		addr = ip.String()
+	}
+
 	service, err := mdns.NewMDNSService(
 		a.info.FriendlyName,
 		ServiceType+".",
 		"local.",
-		"",
+		addr,
 		a.info.Port,
 		nil,
 		txtRecords,
@@ -113,6 +118,19 @@ func (a *Advertiser) Stop(ctx context.Context) error {
 
 // Name returns the component name for the Supervisor.
 func (a *Advertiser) Name() string { return "mdns" }
+
+func getPrimaryIP() (net.IP, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil, err
+	}
+	for _, addr := range addrs {
+		if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() && ipNet.IP.To4() != nil {
+			return ipNet.IP, nil
+		}
+	}
+	return nil, fmt.Errorf("no suitable IP address found")
+}
 
 // Health returns the advertiser's health status.
 func (a *Advertiser) Health() interface{} {
