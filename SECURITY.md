@@ -85,4 +85,4 @@ A formal bug bounty program is not yet available. This will be updated when one 
 
 ## Security.txt
 
-See https://jphat.net/.well-known/security.txt for the latest security contact information.
+See https://jphat.net/buzzpi/.well-known/security.txt for the latest security contact information.
