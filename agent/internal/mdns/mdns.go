@@ -69,18 +69,18 @@ func (a *Advertiser) Start(ctx context.Context) error {
 	host, _ := net.InterfaceAddrs()
 	_ = host // TODO: get primary IP
 
-	addr := ""
+	var ips []net.IP
 	if ip, err := getPrimaryIP(); err == nil {
-		addr = ip.String()
+		ips = []net.IP{ip}
 	}
 
 	service, err := mdns.NewMDNSService(
 		a.info.FriendlyName,
 		ServiceType+".",
 		"local.",
-		addr,
+		"",
 		a.info.Port,
-		nil,
+		ips,
 		txtRecords,
 	)
 	if err != nil {
