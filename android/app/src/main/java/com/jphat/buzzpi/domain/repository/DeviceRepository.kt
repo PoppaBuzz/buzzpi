@@ -31,6 +31,9 @@ interface DeviceRepository {
     suspend fun fetchDeviceInfo(deviceId: String): Device?
     suspend fun fetchDeviceStats(deviceId: String): StatsResponse?
 
+    // Connection management
+    suspend fun ensureConnected(deviceId: String)
+
     // Terminal
     suspend fun connectTerminal(deviceId: String)
     suspend fun disconnectTerminal(deviceId: String)

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jphat.buzzpi.data.bpp.BppClient
 import com.jphat.buzzpi.data.bpp.ConnectionState
+import com.jphat.buzzpi.domain.repository.DeviceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +34,8 @@ data class ScreenViewerUiState(
 class ScreenViewerViewModel
 @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val bppClient: BppClient
+    private val bppClient: BppClient,
+    private val deviceRepository: DeviceRepository
 ) : ViewModel() {
 
     private val deviceId: String = savedStateHandle["deviceId"] ?: ""
@@ -49,7 +51,7 @@ class ScreenViewerViewModel
         _uiState.value = _uiState.value.copy(isConnecting = true, error = null)
         viewModelScope.launch {
             try {
-                bppClient.connect(deviceId)
+                deviceRepository.ensureConnected(deviceId)
                 _uiState.value = _uiState.value.copy(
                     isConnected = true,
                     isConnecting = false
@@ -74,6 +76,17 @@ class ScreenViewerViewModel
                     put("quality", _uiState.value.quality)
                 }
                 val response = bppClient.sendRequest("screen.capture", params)
+
+                if (response.error != null) {
+                    val errorMsg = response.error!!.message
+                    _uiState.value = _uiState.value.copy(
+                        error = if (errorMsg.contains("capture") || errorMsg.contains("screen") || errorMsg.contains("display"))
+                            "Screen capture unavailable. This Pi may not have a display connected."
+                        else errorMsg
+                    )
+                    return@launch
+                }
+
                 val resultJson = response.result?.let { org.json.JSONObject(it.decodeToString()) }
                 val data = resultJson?.optString("data", "") ?: ""
                 if (data.isNotEmpty()) {
@@ -86,11 +99,14 @@ class ScreenViewerViewModel
                             frameHeight = bitmap.height,
                             frameCount = _uiState.value.frameCount + 1
                         )
+                        if (!_uiState.value.isStreaming) {
+                            startStream()
+                        }
                     }
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = e.message ?: "Capture failed"
+                    error = "Screen capture failed: ${e.message}. This Pi may not have a display connected."
                 )
             }
         }
@@ -98,7 +114,7 @@ class ScreenViewerViewModel
 
     fun startStream() {
         if (_uiState.value.isStreaming) return
-        _uiState.value = _uiState.value.copy(isStreaming = true)
+        _uiState.value = _uiState.value.copy(isStreaming = true, error = null)
 
         streamJob = viewModelScope.launch {
             while (_uiState.value.isStreaming) {
@@ -109,6 +125,15 @@ class ScreenViewerViewModel
                         put("quality", _uiState.value.quality)
                     }
                     val response = bppClient.sendRequest("screen.capture", params)
+
+                    if (response.error != null) {
+                        _uiState.value = _uiState.value.copy(
+                            error = "Stream error: ${response.error!!.message}",
+                            isStreaming = false
+                        )
+                        break
+                    }
+
                     val resultJson = response.result?.let { org.json.JSONObject(it.decodeToString()) }
                     val data = resultJson?.optString("data", "") ?: ""
                     if (data.isNotEmpty()) {
@@ -127,7 +152,8 @@ class ScreenViewerViewModel
                     kotlinx.coroutines.delay(delayMs)
                 } catch (e: Exception) {
                     _uiState.value = _uiState.value.copy(
-                        error = e.message ?: "Stream error"
+                        error = "Stream error: ${e.message}",
+                        isStreaming = false
                     )
                     break
                 }

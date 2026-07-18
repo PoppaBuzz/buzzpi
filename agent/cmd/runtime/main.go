@@ -108,13 +108,14 @@ func main() {
 	eng := engine.NewManager(logger)
 
 	// Initialize Device service
-	devSvc, err := device.NewService(cfg, devID.DeviceID, logger)
+	devSvc, err := device.NewService(cfg, *configPath, devID.DeviceID, logger)
 	if err != nil {
 		logger.Error("failed to initialize device service", "error", err)
 		os.Exit(1)
 	}
 	eng.RegisterMethod("device.info", devSvc.HandleInfo)
 	eng.RegisterMethod("device.stats", devSvc.HandleStats)
+	eng.RegisterMethod("device.rename", devSvc.HandleRename)
 
 	pairH := pairing.NewHandler(store, devID.DeviceID, logger)
 	eng.RegisterMethod("pair.initiate", pairH.HandleInitiate)

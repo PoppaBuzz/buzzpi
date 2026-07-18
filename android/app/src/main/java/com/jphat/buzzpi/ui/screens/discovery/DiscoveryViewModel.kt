@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 data class DiscoveryUiState(
@@ -29,6 +31,8 @@ class DiscoveryViewModel
 
     private val _selectedDevice = MutableStateFlow<Device?>(null)
     val selectedDevice: StateFlow<Device?> = _selectedDevice.asStateFlow()
+
+    private val pairingMutex = Mutex()
 
     init {
         viewModelScope.launch {
@@ -69,14 +73,16 @@ class DiscoveryViewModel
 
     fun pairWithDevice(device: Device) {
         viewModelScope.launch {
-            try {
-                _uiState.update { copy(error = null) }
-                val result = deviceRepository.pair(device)
-                if (!result.success) {
-                    _uiState.update { copy(error = result.error ?: "Pairing failed") }
+            pairingMutex.withLock {
+                try {
+                    _uiState.update { copy(error = null) }
+                    val result = deviceRepository.pair(device)
+                    if (!result.success) {
+                        _uiState.update { copy(error = result.error ?: "Pairing failed") }
+                    }
+                } catch (e: Exception) {
+                    _uiState.update { copy(error = e.message) }
                 }
-            } catch (e: Exception) {
-                _uiState.update { copy(error = e.message) }
             }
         }
     }

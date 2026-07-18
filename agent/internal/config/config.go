@@ -122,3 +122,18 @@ func DefaultConfigPaths() []string {
 		filepath.Join(os.Getenv("HOME"), ".buzzpi", "runtime.json"),
 	}
 }
+
+// Save writes the configuration to the specified file path as JSON.
+func Save(cfg *Config, path string) error {
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	return nil
+}

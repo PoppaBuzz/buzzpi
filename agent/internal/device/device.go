@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,13 +20,14 @@ import (
 
 // Service provides device information and system statistics.
 type Service struct {
-	cfg       *config.Config
-	deviceID  string
-	log       *slog.Logger
-	startTime time.Time
-	hostname  string
-	cpuMu     sync.Mutex
-	prevCPU   cpuTimes
+	cfg        *config.Config
+	configPath string
+	deviceID   string
+	log        *slog.Logger
+	startTime  time.Time
+	hostname   string
+	cpuMu      sync.Mutex
+	prevCPU    cpuTimes
 }
 
 // InfoResponse is the response for device.info.
@@ -86,7 +88,7 @@ type InterfaceStats struct {
 }
 
 // NewService creates a new Device service.
-func NewService(cfg *config.Config, deviceID string, log *slog.Logger) (*Service, error) {
+func NewService(cfg *config.Config, configPath string, deviceID string, log *slog.Logger) (*Service, error) {
 	if log == nil {
 		log = slog.Default()
 	}
@@ -97,11 +99,12 @@ func NewService(cfg *config.Config, deviceID string, log *slog.Logger) (*Service
 	}
 
 	return &Service{
-		cfg:       cfg,
-		deviceID:  deviceID,
-		log:       log.With("component", "device"),
-		startTime: time.Now(),
-		hostname:  hostname,
+		cfg:        cfg,
+		configPath: configPath,
+		deviceID:   deviceID,
+		log:        log.With("component", "device"),
+		startTime:  time.Now(),
+		hostname:   hostname,
 	}, nil
 }
 
@@ -156,6 +159,36 @@ func (s *Service) friendlyName() string {
 
 // Name returns the component name (for the Supervisor).
 func (s *Service) Name() string { return "device" }
+
+// HandleRename updates the device's friendly name and persists the change.
+func (s *Service) HandleRename(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, fmt.Errorf("invalid params: %w", err)
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		return nil, fmt.Errorf("name must not be empty")
+	}
+	if len(req.Name) > 64 {
+		return nil, fmt.Errorf("name must be 64 characters or fewer")
+	}
+
+	s.cfg.Runtime.DeviceName = req.Name
+
+	if s.configPath != "" {
+		if err := config.Save(s.cfg, s.configPath); err != nil {
+			s.log.Error("failed to persist device name", "error", err)
+			return nil, fmt.Errorf("save config: %w", err)
+		}
+	}
+
+	s.log.Info("device renamed", "name", req.Name)
+	return map[string]string{"name": req.Name}, nil
+}
 
 // Start initializes the device service.
 func (s *Service) Start(ctx context.Context) error {

@@ -59,6 +59,18 @@ func (h *Handler) HandleBrowse(ctx context.Context, params json.RawMessage) (int
 		return nil, fmt.Errorf("read directory: %w", err)
 	}
 
+	// If /home is empty, fall back to /home/pi (common on Raspberry Pi)
+	if len(entries) == 0 && absPath == "/home" {
+		fallback := "/home/pi"
+		if fi, err := os.Stat(fallback); err == nil && fi.IsDir() {
+			absPath = fallback
+			entries, err = os.ReadDir(absPath)
+			if err != nil {
+				return nil, fmt.Errorf("read directory: %w", err)
+			}
+		}
+	}
+
 	var files []FileInfo
 	for _, entry := range entries {
 		info, err := entry.Info()

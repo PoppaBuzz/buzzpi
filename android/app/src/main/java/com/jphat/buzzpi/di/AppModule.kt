@@ -68,6 +68,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDeviceRepository(
+        @ApplicationContext context: Context,
         mdnsDiscovery: MdnsDiscovery,
         bppClient: BppClient,
         handshakeHandler: HandshakeHandler,
@@ -77,7 +78,8 @@ object AppModule {
             mdnsDiscovery = mdnsDiscovery,
             bppClient = bppClient,
             handshakeHandler = handshakeHandler,
-            sessionRepository = sessionRepositoryImpl
+            sessionRepository = sessionRepositoryImpl,
+            context = context
         )
     }
 

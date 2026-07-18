@@ -234,13 +234,32 @@ fun ScreenViewerScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = uiState.error ?: "No screen data. Tap capture to start.",
+                            text = uiState.error ?: "Connecting to Pi display...",
                             color = Color(0xFF8B949E)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         ElevatedButton(onClick = { viewModel.captureScreenshot() }) {
                             Text("Capture Screenshot")
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ElevatedFilterChip(
+                            selected = uiState.isStreaming,
+                            onClick = {
+                                if (uiState.isStreaming) viewModel.stopStream()
+                                else viewModel.startStream()
+                            },
+                            label = { Text(if (uiState.isStreaming) "Stop Stream" else "Start Live Stream") },
+                            leadingIcon = {
+                                Icon(
+                                    if (uiState.isStreaming) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            colors = FilterChipDefaults.elevatedFilterChipColors(
+                                selectedContainerColor = Color(0xFF22C55E).copy(alpha = 0.2f)
+                            )
+                        )
                     }
                 }
             }

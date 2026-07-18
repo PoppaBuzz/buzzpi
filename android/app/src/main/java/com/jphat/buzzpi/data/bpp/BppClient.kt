@@ -1,5 +1,6 @@
 package com.jphat.buzzpi.data.bpp
 
+import android.util.Log
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,7 @@ class BppClient(
     private var messageCounter = 0L
 
     companion object {
+        private const val TAG = "BppClient"
         private val dateFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
@@ -49,8 +51,18 @@ class BppClient(
         }
     }
 
+    fun isConnected(): Boolean {
+        return webSocket != null && _connectionState.value == ConnectionState.CONNECTED
+    }
+
     fun connect(url: String) {
-        if (url == currentUrl && _connectionState.value == ConnectionState.CONNECTED) return
+        val state = _connectionState.value
+        Log.d(TAG, "connect() url=$url currentUrl=$currentUrl state=$state")
+        if (url == currentUrl && state != ConnectionState.DISCONNECTED && state != ConnectionState.ERROR) {
+            Log.d(TAG, "connect() guard: skip (same url, state=$state)")
+            return
+        }
+        Log.d(TAG, "connect() calling disconnect() then connecting")
         disconnect()
         currentUrl = url
         _connectionState.value = ConnectionState.CONNECTING
@@ -61,6 +73,7 @@ class BppClient(
 
         webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                Log.d(TAG, "onOpen url=$url")
                 _connectionState.value = ConnectionState.CONNECTED
             }
 
@@ -68,36 +81,46 @@ class BppClient(
                 try {
                     val envelope = parseEnvelope(text)
                     val rid = envelope.rid
+                    Log.d(TAG, "onMessage method=${envelope.method} rid=$rid type=${envelope.type} id=${envelope.id}")
                     if (rid.isNotEmpty() && pendingRequests.containsKey(rid)) {
+                        Log.d(TAG, "onMessage routing to pending request rid=$rid")
                         pendingRequests[rid]?.trySend(envelope)
                     } else {
+                        Log.d(TAG, "onMessage routing to messages channel")
                         _messages.trySend(envelope)
                     }
-                } catch (_: Exception) {
-                    // Ignore malformed messages
+                } catch (e: Exception) {
+                    Log.e(TAG, "onMessage parse error: ${e.message}")
                 }
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "onClosing code=$code reason=$reason")
                 webSocket.close(1000, null)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "onClosed code=$code reason=$reason")
                 _connectionState.value = ConnectionState.DISCONNECTED
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                Log.e(TAG, "onFailure: ${t.message}", t)
                 _connectionState.value = ConnectionState.ERROR
             }
         })
     }
 
     fun disconnect() {
+        Log.d(TAG, "disconnect() pendingRequests=${pendingRequests.size} url=$currentUrl", Throwable("disconnect stacktrace"))
         webSocket?.close(1000, "Client closing")
         webSocket = null
         currentUrl = ""
         _connectionState.value = ConnectionState.DISCONNECTED
-        pendingRequests.forEach { (_, channel) -> channel.close() }
+        pendingRequests.forEach { (rid, channel) ->
+            Log.d(TAG, "disconnect() closing channel rid=$rid")
+            channel.close()
+        }
         pendingRequests.clear()
     }
 
@@ -125,8 +148,11 @@ class BppClient(
         pendingRequests[reqId] = channel
 
         val jsonText = JSONObject(envelope).toString()
-        webSocket?.send(jsonText)
-        return channel.receive()
+        val sent = webSocket?.send(jsonText) ?: false
+        Log.d(TAG, "sendRequest method=$method rid=$reqId sent=$sent pendingCount=${pendingRequests.size}")
+        val response = channel.receive()
+        Log.d(TAG, "sendRequest received response rid=${response.rid} method=${response.method} type=${response.type} error=${response.error?.message}")
+        return response
     }
 
     /**

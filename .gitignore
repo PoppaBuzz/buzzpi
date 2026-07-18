@@ -17,6 +17,7 @@ agent/all_cover
 # IDE
 .vscode/
 .idea/
+.omo/
 *.swp
 *.swo
 

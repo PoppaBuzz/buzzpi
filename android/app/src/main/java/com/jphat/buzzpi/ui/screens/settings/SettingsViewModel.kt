@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jphat.buzzpi.data.bpp.BppClient
 import com.jphat.buzzpi.domain.repository.DeviceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import javax.inject.Inject
 
 data class SettingsUiState(
@@ -23,6 +25,7 @@ data class SettingsUiState(
     val terminalFontSize: Int = 14,
     val terminalFontFamily: String = "monospace",
     val isSaving: Boolean = false,
+    val isRenaming: Boolean = false,
     val saveSuccess: Boolean = false,
     val error: String? = null
 )
@@ -31,6 +34,7 @@ data class SettingsUiState(
 class SettingsViewModel
 @Inject constructor(
     private val deviceRepository: DeviceRepository,
+    private val bppClient: BppClient,
     @ApplicationContext context: Context
 ) : ViewModel() {
 
@@ -69,6 +73,40 @@ class SettingsViewModel
 
     fun updateDeviceName(name: String) {
         _uiState.value = _uiState.value.copy(deviceName = name)
+    }
+
+    fun renameDevice(newName: String) {
+        if (newName.isBlank()) {
+            _uiState.value = _uiState.value.copy(error = "Name must not be empty")
+            return
+        }
+        _uiState.value = _uiState.value.copy(isRenaming = true, error = null)
+        viewModelScope.launch {
+            try {
+                deviceRepository.ensureConnected(_uiState.value.deviceId)
+                val params = org.json.JSONObject().apply { put("name", newName) }
+                val response = bppClient.sendRequest("device.rename", params)
+                if (response.error != null) {
+                    _uiState.value = _uiState.value.copy(
+                        isRenaming = false,
+                        error = response.error.message ?: "Rename failed"
+                    )
+                    return@launch
+                }
+                val result = response.result?.let { org.json.JSONObject(it.decodeToString()) }
+                val savedName = result?.optString("name", newName) ?: newName
+                _uiState.value = _uiState.value.copy(
+                    deviceName = savedName,
+                    isRenaming = false,
+                    saveSuccess = true
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isRenaming = false,
+                    error = e.message ?: "Rename failed"
+                )
+            }
+        }
     }
 
     fun updateRelayServer(url: String) {

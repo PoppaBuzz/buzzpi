@@ -67,6 +67,7 @@ fun DiscoveryScreen(
         topBar = {
             BuzzPiTopBar(
                 title = "BuzzPi",
+                titleImageRes = R.drawable.buzzpi_text_tag_logo,
                 onSettings = onNavigateToSettings,
                 actions = {
                     IconButton(onClick = { viewModel.refreshDiscovery() }) {
@@ -85,6 +86,9 @@ fun DiscoveryScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            val pairedIds = uiState.pairedDevices.map { it.deviceId }.toSet()
+            val unpairedDevices = uiState.devices.filter { it.deviceId !in pairedIds }
+
             when {
                 uiState.isScanning && uiState.devices.isEmpty() -> {
                     // Scanning state with logo
@@ -93,7 +97,7 @@ fun DiscoveryScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_buzzpi_logo),
+                            painter = painterResource(R.drawable.ic_launcher_foreground),
                             contentDescription = "BuzzPi",
                             modifier = Modifier.size(80.dp),
                             tint = MaterialTheme.colorScheme.primary
@@ -119,7 +123,7 @@ fun DiscoveryScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_buzzpi_logo),
+                            painter = painterResource(R.drawable.ic_launcher_foreground),
                             contentDescription = "BuzzPi",
                             modifier = Modifier.size(80.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
@@ -175,7 +179,7 @@ fun DiscoveryScreen(
                         }
 
                         // Discovered devices section
-                        if (uiState.devices.isNotEmpty()) {
+                        if (unpairedDevices.isNotEmpty()) {
                             item {
                                 Text(
                                     text = "Discovered Devices",
@@ -187,7 +191,7 @@ fun DiscoveryScreen(
                                     )
                                 )
                             }
-                            items(uiState.devices, key = { it.deviceId }) { device ->
+                            items(unpairedDevices, key = { it.deviceId }) { device ->
                                 DeviceCard(
                                     device = device,
                                     onClick = {
@@ -202,7 +206,7 @@ fun DiscoveryScreen(
             }
 
             // Scanning indicator at top
-            if (uiState.isScanning && uiState.devices.isNotEmpty()) {
+            if (uiState.isScanning && unpairedDevices.isNotEmpty()) {
                 CircularProgressIndicator(
                     modifier = Modifier
                         .align(Alignment.TopCenter)

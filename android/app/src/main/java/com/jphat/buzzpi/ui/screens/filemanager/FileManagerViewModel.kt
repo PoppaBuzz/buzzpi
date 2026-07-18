@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jphat.buzzpi.data.bpp.BppClient
+import com.jphat.buzzpi.domain.repository.DeviceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +39,7 @@ class FileManagerViewModel
 @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val bppClient: BppClient,
+    private val deviceRepository: DeviceRepository,
     private val application: Application
 ) : ViewModel() {
 
@@ -46,7 +48,16 @@ class FileManagerViewModel
     val uiState: StateFlow<FileManagerUiState> = _uiState.asStateFlow()
 
     init {
-        browseDirectory("/home")
+        viewModelScope.launch {
+            try {
+                deviceRepository.ensureConnected(deviceId)
+                browseDirectory("/home")
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Failed to connect"
+                )
+            }
+        }
     }
 
     fun browseDirectory(path: String) {
@@ -62,10 +73,25 @@ class FileManagerViewModel
                     put("path", path)
                 }
                 val response = bppClient.sendRequest("file.browse", params)
+
+                if (response.error != null) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Failed to browse: ${response.error!!.message}"
+                    )
+                    return@launch
+                }
+
                 val resultJson = response.result?.let { JSONObject(it.decodeToString()) }
                 val filesArray = resultJson?.optJSONArray("files") ?: JSONArray()
                 val files = parseFiles(filesArray)
                 val breadcrumb = buildBreadcrumb(path)
+
+                if (files.isEmpty() && path == "/home") {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    browseDirectory("/home/pi")
+                    return@launch
+                }
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
