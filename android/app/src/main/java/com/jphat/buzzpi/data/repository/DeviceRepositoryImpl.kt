@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
 class DeviceRepositoryImpl
@@ -31,7 +32,8 @@ class DeviceRepositoryImpl
     private val mdnsDiscovery: MdnsDiscovery,
     private val bppClient: BppClient,
     private val handshakeHandler: HandshakeHandler,
-    private val sessionRepository: SessionRepositoryImpl
+    private val sessionRepository: SessionRepositoryImpl,
+    @param:dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
 ) : DeviceRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -43,6 +45,47 @@ class DeviceRepositoryImpl
 
     private val _terminalState = MutableStateFlow(TerminalState())
     override val terminalState: Flow<TerminalState> = _terminalState.asStateFlow()
+
+    init {
+        loadPairedDevices()
+    }
+
+    private fun loadPairedDevices() {
+        val prefs = context.getSharedPreferences("buzzpi_paired_devices", android.content.Context.MODE_PRIVATE)
+        val json = prefs.getString("paired_devices", null) ?: return
+        try {
+            val arr = org.json.JSONArray(json)
+            val devices = (0 until arr.length()).mapNotNull { i ->
+                val obj = arr.getJSONObject(i)
+                Device(
+                    deviceId = obj.optString("device_id", ""),
+                    friendlyName = obj.optString("friendly_name", ""),
+                    ipAddress = obj.optString("ip_address", ""),
+                    port = obj.optInt("port", 8420),
+                    runtimeVersion = obj.optString("runtime_version", ""),
+                    platform = obj.optString("platform", ""),
+                    isOnline = true
+                )
+            }.filter { it.deviceId.isNotEmpty() }
+            _pairedDevices.value = devices
+        } catch (_: Exception) { }
+    }
+
+    private fun savePairedDevices() {
+        val prefs = context.getSharedPreferences("buzzpi_paired_devices", android.content.Context.MODE_PRIVATE)
+        val arr = org.json.JSONArray()
+        _pairedDevices.value.forEach { device ->
+            arr.put(org.json.JSONObject().apply {
+                put("device_id", device.deviceId)
+                put("friendly_name", device.friendlyName)
+                put("ip_address", device.ipAddress)
+                put("port", device.port)
+                put("runtime_version", device.runtimeVersion)
+                put("platform", device.platform)
+            })
+        }
+        prefs.edit().putString("paired_devices", arr.toString()).apply()
+    }
 
     override suspend fun startDiscovery() {
         mdnsDiscovery.startDiscovery()
@@ -87,6 +130,7 @@ class DeviceRepositoryImpl
             if (current.none { it.deviceId == device.deviceId }) {
                 current.add(device)
                 _pairedDevices.value = current
+                savePairedDevices()
             }
 
             PairingResult(true, sessionToken = session.session)
@@ -137,6 +181,7 @@ class DeviceRepositoryImpl
         val current = _pairedDevices.value.toMutableList()
         current.removeAll { it.deviceId == deviceId }
         _pairedDevices.value = current
+        savePairedDevices()
         sessionRepository.deleteSession(deviceId)
     }
 
@@ -219,6 +264,22 @@ class DeviceRepositoryImpl
         bppClient.disconnect()
     }
 
+    override suspend fun ensureConnected(deviceId: String) {
+        if (bppClient.isConnected()) return
+
+        val device = _pairedDevices.value.find { it.deviceId == deviceId }
+            ?: throw Exception("Device $deviceId not found in paired devices")
+
+        val session = sessionRepository.getSession(deviceId)
+            ?: throw Exception("No session found for $deviceId")
+
+        if (session.isExpired) throw Exception("Session expired — re-pairing required")
+
+        val wsUrl = "ws://${device.ipAddress}:${device.port}/ws"
+        val accepted = handshakeHandler.reconnectWithSession(wsUrl, session.sessionToken)
+        if (!accepted) throw Exception("Session rejected by device — re-pairing required")
+    }
+
     override suspend fun connectTerminal(deviceId: String) {
         _terminalState.value = _terminalState.value.copy(isConnected = false)
 
@@ -234,13 +295,34 @@ class DeviceRepositoryImpl
             }
         }
 
-        bppClient.sendMessage("terminal.open", JSONObject().apply {
+        // Use sendRequest to get session_id back from Go agent
+        val params = JSONObject().apply {
             put("device_id", deviceId)
             put("cols", _terminalState.value.dimensions.cols)
             put("rows", _terminalState.value.dimensions.rows)
-        })
+        }
+        val response = bppClient.sendRequest("terminal.open", params)
 
-        _terminalState.value = _terminalState.value.copy(isConnected = true)
+        if (response.error != null) {
+            _terminalState.value = _terminalState.value.copy(
+                error = response.error!!.message
+            )
+            return
+        }
+
+        val resultJson = response.result?.let { JSONObject(it.decodeToString()) }
+        val sessionId = resultJson?.optString("session_id", "") ?: ""
+
+        _terminalState.value = _terminalState.value.copy(
+            isConnected = true,
+            sessionId = sessionId
+        )
+
+        // Show initial prompt so user knows terminal is ready
+        val promptLine = TerminalLine(text = "$ ")
+        _terminalState.value = _terminalState.value.copy(
+            lines = listOf(promptLine)
+        )
 
         terminalOutputJob?.cancel()
         terminalOutputJob = scope.launch {
@@ -277,9 +359,38 @@ class DeviceRepositoryImpl
     }
 
     override suspend fun sendTerminalInput(input: TerminalInput) {
-        bppClient.sendMessage("terminal.input", JSONObject().apply {
+        val sessionId = _terminalState.value.sessionId
+        val params = JSONObject().apply {
             put("data", input.data.decodeToString())
-        })
+            if (sessionId.isNotEmpty()) put("session_id", sessionId)
+        }
+        val response = bppClient.sendRequest("terminal.input", params)
+
+        val current = _terminalState.value.lines.toMutableList()
+
+        // Echo printable input on the current prompt line
+        val inputText = input.data.decodeToString()
+        val isPrintable = inputText.all { it.code in 0x20..0x7E || it == '\n' || it == '\r' || it == '\t' }
+        if (isPrintable && inputText.isNotBlank() && current.isNotEmpty()) {
+            val lastLine = current.removeAt(current.lastIndex)
+            current.add(TerminalLine(text = lastLine.text + inputText))
+        }
+
+        // Append any output from the Go agent
+        if (response.error != null) {
+            current.add(TerminalLine(text = "Error: ${response.error!!.message}"))
+        } else {
+            val resultJson = response.result?.let { JSONObject(it.decodeToString()) }
+            val output = resultJson?.optString("output", "") ?: ""
+            if (output.isNotEmpty()) {
+                output.lines().forEach { line ->
+                    current.add(TerminalLine(text = line))
+                }
+            }
+        }
+        current.add(TerminalLine(text = "$ "))
+
+        _terminalState.value = _terminalState.value.copy(lines = current)
     }
 
     override suspend fun clearTerminal(deviceId: String) {

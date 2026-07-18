@@ -143,7 +143,7 @@ func (m *Manager) HandleOpen(ctx context.Context, params json.RawMessage) (inter
 func (m *Manager) HandleInput(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID string `json:"session_id"`
-		Data      []byte `json:"data"`
+		Data      string `json:"data"`
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
@@ -154,11 +154,11 @@ func (m *Manager) HandleInput(ctx context.Context, params json.RawMessage) (inte
 		return nil, fmt.Errorf("session not found: %s", req.SessionID)
 	}
 
-	if _, err := s.Write(req.Data); err != nil {
+	if _, err := s.Write([]byte(req.Data)); err != nil {
 		return nil, fmt.Errorf("write: %w", err)
 	}
 
-	output, err := s.ReadOutput(50 * time.Millisecond)
+	output, err := s.ReadOutput(200 * time.Millisecond)
 	if err != nil {
 		m.logger.Warn("read output after input", "error", err, "session", req.SessionID)
 	}
@@ -168,7 +168,7 @@ func (m *Manager) HandleInput(ctx context.Context, params json.RawMessage) (inte
 	}
 
 	return map[string]interface{}{
-		"output": output,
+		"output": string(output),
 	}, nil
 }
 

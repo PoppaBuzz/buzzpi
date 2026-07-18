@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -89,6 +90,7 @@ fun TerminalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
         ) {
             // Terminal output area
             Box(
@@ -114,7 +116,7 @@ fun TerminalScreen(
                     }
                 } else if (uiState.terminalState.lines.isEmpty()) {
                     Text(
-                        text = "Terminal ready. Type a command to begin.",
+                        text = "Connecting to terminal...",
                         color = Color(0xFF8B949E),
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -140,6 +142,7 @@ fun TerminalScreen(
                 input = uiState.inputBuffer,
                 onInputChange = { viewModel.updateInputBuffer(it) },
                 onSend = { viewModel.sendInput(it) },
+                onSendKey = { viewModel.sendSpecialKey(it) },
                 isConnected = uiState.isConnected
             )
         }

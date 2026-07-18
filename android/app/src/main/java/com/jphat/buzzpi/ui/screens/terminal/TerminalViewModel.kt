@@ -87,6 +87,19 @@ class TerminalViewModel
         }
     }
 
+    fun sendSpecialKey(key: ByteArray) {
+        if (!_uiState.value.isConnected) return
+        viewModelScope.launch {
+            try {
+                deviceRepository.sendTerminalInput(TerminalInput(data = key))
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Failed to send key"
+                )
+            }
+        }
+    }
+
     fun updateInputBuffer(text: String) {
         _uiState.value = _uiState.value.copy(
             inputBuffer = text,
