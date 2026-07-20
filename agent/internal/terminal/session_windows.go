@@ -49,3 +49,7 @@ func (s *Session) Close() error {
 func (s *Session) Wait() error {
 	return nil
 }
+
+// StartOutputLoop is a no-op on Windows.
+func (s *Session) StartOutputLoop(sender func([]byte) error) {
+}

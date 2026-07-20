@@ -16,7 +16,7 @@ const testDeviceID = "test_device_abc123"
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	cfg := config.DefaultConfig()
-	s, err := NewService(cfg, testDeviceID, slog.Default())
+	s, err := NewService(cfg, "", testDeviceID, slog.Default())
 	if err != nil {
 		t.Fatalf("NewService() failed: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestNewService(t *testing.T) {
 
 	t.Run("with nil logger", func(t *testing.T) {
 		cfg := config.DefaultConfig()
-		s, err := NewService(cfg, testDeviceID, nil)
+		s, err := NewService(cfg, "", testDeviceID, nil)
 		if err != nil {
 			t.Fatalf("NewService(nil logger) failed: %v", err)
 		}
@@ -89,7 +89,7 @@ func TestHandleInfoFriendlyName(t *testing.T) {
 	t.Run("uses device_name from config", func(t *testing.T) {
 		cfg := config.DefaultConfig()
 		cfg.Runtime.DeviceName = "MyBuzzPi"
-		s, err := NewService(cfg, testDeviceID, slog.Default())
+		s, err := NewService(cfg, "", testDeviceID, slog.Default())
 		if err != nil {
 			t.Fatalf("NewService() failed: %v", err)
 		}
@@ -107,7 +107,7 @@ func TestHandleInfoFriendlyName(t *testing.T) {
 	t.Run("falls back to hostname when empty", func(t *testing.T) {
 		cfg := config.DefaultConfig()
 		cfg.Runtime.DeviceName = ""
-		s, err := NewService(cfg, testDeviceID, slog.Default())
+		s, err := NewService(cfg, "", testDeviceID, slog.Default())
 		if err != nil {
 			t.Fatalf("NewService() failed: %v", err)
 		}
@@ -336,7 +336,7 @@ var os_hostname = os.Hostname
 func TestServiceFriendlyNameFallback(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Runtime.DeviceName = ""
-	s, err := NewService(cfg, "dev_test", slog.Default())
+	s, err := NewService(cfg, "", "dev_test", slog.Default())
 	if err != nil {
 		t.Fatalf("NewService() failed: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestServiceFriendlyNameFallback(t *testing.T) {
 func TestServiceFriendlyNameFromConfig(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.Runtime.DeviceName = "CustomName"
-	s, err := NewService(cfg, "dev_test", slog.Default())
+	s, err := NewService(cfg, "", "dev_test", slog.Default())
 	if err != nil {
 		t.Fatalf("NewService() failed: %v", err)
 	}

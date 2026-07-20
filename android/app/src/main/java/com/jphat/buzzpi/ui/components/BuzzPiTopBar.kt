@@ -23,12 +23,12 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun BuzzPiTopBar(
     title: String,
+    modifier: Modifier = Modifier,
     @DrawableRes titleImageRes: Int = 0,
     showBack: Boolean = false,
     onBack: () -> Unit = {},
     onSettings: (() -> Unit)? = null,
-    actions: @Composable () -> Unit = {},
-    modifier: Modifier = Modifier
+    actions: @Composable () -> Unit = {}
 ) {
     CenterAlignedTopAppBar(
         title = {

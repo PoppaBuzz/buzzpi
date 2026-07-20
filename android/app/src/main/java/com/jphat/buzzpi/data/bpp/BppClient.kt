@@ -16,6 +16,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -129,7 +130,7 @@ class BppClient(
      * The envelope uses the Go agent wire format: id, rid, ts fields.
      * Response correlation is done via rid (request ID match).
      */
-    suspend fun sendRequest(method: String, params: JSONObject? = null): BppEnvelope {
+    suspend fun sendRequest(method: String, params: JSONObject? = null, timeoutMs: Long = 15_000L): BppEnvelope {
         val msgId = nextMessageId()
         val reqId = nextRequestId()
         val timestamp = dateFormat.get()!!.format(Date())
@@ -150,7 +151,23 @@ class BppClient(
         val jsonText = JSONObject(envelope).toString()
         val sent = webSocket?.send(jsonText) ?: false
         Log.d(TAG, "sendRequest method=$method rid=$reqId sent=$sent pendingCount=${pendingRequests.size}")
-        val response = channel.receive()
+
+        if (!sent) {
+            pendingRequests.remove(reqId)
+            channel.close()
+            Log.w(TAG, "sendRequest method=$method FAILED: WebSocket not connected")
+            throw IllegalStateException("WebSocket not connected — cannot send $method")
+        }
+
+        val response = withTimeoutOrNull(timeoutMs) {
+            channel.receive()
+        } ?: run {
+            pendingRequests.remove(reqId)
+            channel.close()
+            Log.w(TAG, "sendRequest method=$method rid=$reqId TIMED OUT after ${timeoutMs}ms")
+            throw java.util.concurrent.TimeoutException("Request $method timed out after ${timeoutMs}ms — agent may be unreachable")
+        }
+
         Log.d(TAG, "sendRequest received response rid=${response.rid} method=${response.method} type=${response.type} error=${response.error?.message}")
         return response
     }

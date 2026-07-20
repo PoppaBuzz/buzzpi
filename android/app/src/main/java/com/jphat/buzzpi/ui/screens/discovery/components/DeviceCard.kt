@@ -25,9 +25,9 @@ import com.jphat.buzzpi.ui.components.ConnectionIndicator
 @Composable
 fun DeviceCard(
     device: Device,
-    isPaired: Boolean = false,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isPaired: Boolean = false
 ) {
     Card(
         onClick = onClick,

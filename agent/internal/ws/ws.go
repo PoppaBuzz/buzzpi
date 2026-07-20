@@ -50,6 +50,13 @@ type Connection struct {
 	mu          sync.Mutex
 }
 
+// Send writes a message to the WebSocket connection in a thread-safe manner.
+func (c *Connection) Send(data []byte) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.Conn.WriteMessage(websocket.TextMessage, data)
+}
+
 // Server accepts BPP WebSocket connections from clients.
 type Server struct {
 	httpServer *http.Server

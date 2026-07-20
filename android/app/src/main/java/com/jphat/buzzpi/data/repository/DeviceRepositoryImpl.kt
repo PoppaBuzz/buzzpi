@@ -286,13 +286,18 @@ class DeviceRepositoryImpl
         val device = _pairedDevices.value.find { it.deviceId == deviceId }
         val session = device?.let { sessionRepository.getSession(deviceId) }
 
-        if (device != null && session != null) {
-            val wsUrl = "ws://${device.ipAddress}:${device.port}/ws"
-            val accepted = handshakeHandler.reconnectWithSession(wsUrl, session.sessionToken)
-            if (!accepted) {
-                _terminalState.value = _terminalState.value.copy(error = "Session expired")
-                return
-            }
+        if (device == null || session == null) {
+            _terminalState.value = _terminalState.value.copy(
+                error = "Device not paired or session expired. Please re-pair."
+            )
+            return
+        }
+
+        val wsUrl = "ws://${device.ipAddress}:${device.port}/ws"
+        val accepted = handshakeHandler.reconnectWithSession(wsUrl, session.sessionToken)
+        if (!accepted) {
+            _terminalState.value = _terminalState.value.copy(error = "Session expired — re-pair required")
+            return
         }
 
         // Use sendRequest to get session_id back from Go agent
@@ -316,12 +321,6 @@ class DeviceRepositoryImpl
         _terminalState.value = _terminalState.value.copy(
             isConnected = true,
             sessionId = sessionId
-        )
-
-        // Show initial prompt so user knows terminal is ready
-        val promptLine = TerminalLine(text = "$ ")
-        _terminalState.value = _terminalState.value.copy(
-            lines = listOf(promptLine)
         )
 
         terminalOutputJob?.cancel()
@@ -366,31 +365,11 @@ class DeviceRepositoryImpl
         }
         val response = bppClient.sendRequest("terminal.input", params)
 
-        val current = _terminalState.value.lines.toMutableList()
-
-        // Echo printable input on the current prompt line
-        val inputText = input.data.decodeToString()
-        val isPrintable = inputText.all { it.code in 0x20..0x7E || it == '\n' || it == '\r' || it == '\t' }
-        if (isPrintable && inputText.isNotBlank() && current.isNotEmpty()) {
-            val lastLine = current.removeAt(current.lastIndex)
-            current.add(TerminalLine(text = lastLine.text + inputText))
-        }
-
-        // Append any output from the Go agent
         if (response.error != null) {
+            val current = _terminalState.value.lines.toMutableList()
             current.add(TerminalLine(text = "Error: ${response.error!!.message}"))
-        } else {
-            val resultJson = response.result?.let { JSONObject(it.decodeToString()) }
-            val output = resultJson?.optString("output", "") ?: ""
-            if (output.isNotEmpty()) {
-                output.lines().forEach { line ->
-                    current.add(TerminalLine(text = line))
-                }
-            }
+            _terminalState.value = _terminalState.value.copy(lines = current)
         }
-        current.add(TerminalLine(text = "$ "))
-
-        _terminalState.value = _terminalState.value.copy(lines = current)
     }
 
     override suspend fun clearTerminal(deviceId: String) {
@@ -398,7 +377,9 @@ class DeviceRepositoryImpl
     }
 
     override suspend fun resizeTerminal(deviceId: String, dimensions: Dimensions) {
+        val sessionId = _terminalState.value.sessionId
         bppClient.sendMessage("terminal.resize", JSONObject().apply {
+            if (sessionId.isNotEmpty()) put("session_id", sessionId)
             put("cols", dimensions.cols)
             put("rows", dimensions.rows)
         })

@@ -3,6 +3,7 @@
 package terminal
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -76,6 +77,7 @@ func Create(id, shell string) (*Session, error) {
 		pty:       f,
 		rows:      24,
 		cols:      80,
+		done:      make(chan struct{}),
 	}, nil
 }
 
@@ -94,6 +96,8 @@ func (s *Session) Read() ([]byte, error) {
 
 // ReadOutput reads available PTY output with a timeout.
 func (s *Session) ReadOutput(timeout time.Duration) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return nil, fmt.Errorf("session closed")
 	}
@@ -119,6 +123,8 @@ func (s *Session) ReadOutput(timeout time.Duration) ([]byte, error) {
 
 // Write sends input to the PTY.
 func (s *Session) Write(data []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return 0, fmt.Errorf("session closed")
 	}
@@ -140,12 +146,74 @@ func (s *Session) Resize(rows, cols uint16) error {
 
 // Close terminates the PTY session.
 func (s *Session) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return nil
 	}
 	s.closed = true
+	close(s.done)
 	s.pty.Close()
 	return s.cmd.Kill()
+}
+
+// StartOutputLoop reads PTY output and pushes it to the client via the sender.
+func (s *Session) StartOutputLoop(sender func([]byte) error) {
+	s.sender = sender
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			select {
+			case <-s.done:
+				return
+			default:
+			}
+
+			s.mu.Lock()
+			if s.closed {
+				s.mu.Unlock()
+				return
+			}
+			if f, ok := s.pty.(*os.File); ok {
+				f.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+			}
+			n, readErr := s.pty.Read(buf)
+			if f, ok := s.pty.(*os.File); ok {
+				f.SetReadDeadline(time.Time{})
+			}
+			s.mu.Unlock()
+
+			if n > 0 {
+				eventParams := map[string]interface{}{
+					"session_id": s.ID,
+					"data":       string(buf[:n]),
+				}
+				paramsJSON, _ := json.Marshal(eventParams)
+				event := map[string]interface{}{
+					"v":      1,
+					"id":     "evt_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+					"ts":     time.Now().UTC().Format(time.RFC3339),
+					"type":   "event",
+					"method": "terminal.output",
+					"params": json.RawMessage(paramsJSON),
+				}
+				data, err := json.Marshal(event)
+				if err != nil {
+					continue
+				}
+				if err := sender(data); err != nil {
+					return
+				}
+			}
+
+			if readErr != nil {
+				if os.IsTimeout(readErr) {
+					continue
+				}
+				return
+			}
+		}
+	}()
 }
 
 // Wait blocks until the process exits.

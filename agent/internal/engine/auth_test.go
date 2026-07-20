@@ -242,7 +242,8 @@ func TestHandleErrorResponseHasCorrectRID(t *testing.T) {
 	t.Parallel()
 	m := newTestManager(t)
 	m.RegisterMethod("test", func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-		return nil, json.Unmarshal([]byte("bad"), nil)
+		var v interface{}
+		return nil, json.Unmarshal([]byte("bad"), &v)
 	})
 
 	env, _ := bpp.NewRequest("test", json.RawMessage(`{}`))

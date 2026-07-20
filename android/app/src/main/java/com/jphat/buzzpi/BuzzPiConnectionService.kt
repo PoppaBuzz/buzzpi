@@ -71,19 +71,17 @@ class BuzzPiConnectionService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "BuzzPi Connection",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shows when BuzzPi is connected to a device"
-                setShowBadge(false)
-            }
-
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "BuzzPi Connection",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Shows when BuzzPi is connected to a device"
+            setShowBadge(false)
         }
+
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
     }
 
     private fun createNotification(text: String): Notification {

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/buzzpi/agent/internal/config"
+	"github.com/buzzpi/agent/internal/vchiq"
 	"github.com/buzzpi/agent/internal/version"
 )
 
@@ -208,4 +209,178 @@ func (s *Service) Health() interface{} {
 		"status":    "ok",
 		"uptime_ms": time.Since(s.startTime).Milliseconds(),
 	}
+}
+
+// CPUInfoResponse is the response for device.cpu.
+type CPUInfoResponse struct {
+	Model      string          `json:"model"`
+	Cores      string          `json:"cores"`
+	MHz        string          `json:"mhz"`
+	Temperature string         `json:"temperature"`
+	Frequency  float64         `json:"frequency_mhz"`
+	UsagePercent float64       `json:"usage_percent"`
+	Serial     string          `json:"serial,omitempty"`
+	Revision   string          `json:"revision,omitempty"`
+	Info       []vchiq.LscpuField `json:"info,omitempty"`
+}
+
+func (s *Service) HandleCPU(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	cpuUsage, _, _ := s.readCPUStats()
+
+	model, _ := vchiq.GetCPUModel()
+	cores, _ := vchiq.GetCPUCores()
+	mhz, _ := vchiq.GetCPUMHz()
+	temp, _ := vchiq.GetCPUTemperature()
+	freq, _ := vchiq.GetCPUFrequency()
+	serial, _ := vchiq.GetCPUSerial()
+	revision, _ := vchiq.GetCPURevision()
+	info, _ := vchiq.GetCPUInfo()
+
+	return &CPUInfoResponse{
+		Model:        model,
+		Cores:        cores,
+		MHz:          mhz,
+		Temperature:  temp,
+		Frequency:    freq,
+		UsagePercent: cpuUsage,
+		Serial:       serial,
+		Revision:     revision,
+		Info:         info,
+	}, nil
+}
+
+// ThrottlingResponse is the response for device.throttling.
+type ThrottlingResponse struct {
+	Throttled    int64  `json:"throttled"`
+	ThrottledInfo string `json:"throttled_info"`
+}
+
+func (s *Service) HandleThrottling(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	throttled, err := vchiq.GetThrottled()
+	if err != nil {
+		return nil, fmt.Errorf("get throttled: %w", err)
+	}
+	info, err := vchiq.GetThrottledInfo()
+	if err != nil {
+		return nil, fmt.Errorf("get throttled info: %w", err)
+	}
+	return &ThrottlingResponse{
+		Throttled:     throttled,
+		ThrottledInfo: info,
+	}, nil
+}
+
+// GPUDetailsResponse is the response for device.gpu.
+type GPUDetailsResponse struct {
+	GPUTemperature string `json:"gpu_temperature"`
+	ARM            string `json:"arm_memory"`
+	GPU            string `json:"gpu_memory"`
+}
+
+func (s *Service) HandleGPU(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	temp, _ := vchiq.GetGPUTemperature()
+	arm, gpu, _ := vchiq.GetVCGencmdMemory()
+	return &GPUDetailsResponse{
+		GPUTemperature: temp,
+		ARM:            arm,
+		GPU:            gpu,
+	}, nil
+}
+
+// VoltageResponse is the response for device.voltage.
+type VoltageResponse struct {
+	CoreVoltage string `json:"core_voltage"`
+}
+
+func (s *Service) HandleVoltage(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	volt, err := vchiq.GetCoreVoltage()
+	if err != nil {
+		return nil, fmt.Errorf("get core voltage: %w", err)
+	}
+	return &VoltageResponse{CoreVoltage: volt}, nil
+}
+
+// ProcessResponse is the response for device.processes.
+type ProcessResponse struct {
+	Processes []vchiq.ProcessInfo `json:"processes"`
+}
+
+func (s *Service) HandleProcesses(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	procs, err := vchiq.ListProcesses()
+	if err != nil {
+		return nil, fmt.Errorf("list processes: %w", err)
+	}
+	return &ProcessResponse{Processes: procs}, nil
+}
+
+// USBResponse is the response for device.usb.
+type USBResponse struct {
+	Devices []vchiq.USBDevice `json:"devices"`
+}
+
+func (s *Service) HandleUSB(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	devices, err := vchiq.GetUSBList()
+	if err != nil {
+		return nil, fmt.Errorf("list USB devices: %w", err)
+	}
+	return &USBResponse{Devices: devices}, nil
+}
+
+// OSInfoResponse is the response for device.os.
+type OSInfoResponse struct {
+	Hostname      string   `json:"hostname"`
+	OSName        string   `json:"os_name"`
+	KernelVersion string   `json:"kernel_version"`
+	Uptime        string   `json:"uptime"`
+	LoadAverage   string   `json:"load_average"`
+	FQDN          string   `json:"fqdn"`
+	IPs           []string `json:"ips"`
+}
+
+func (s *Service) HandleOS(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	hostname, _ := vchiq.GetHostname()
+	osName, _ := vchiq.GetOSName()
+	kernel, _ := vchiq.GetKernelVersion()
+	uptime, _ := vchiq.GetUptime()
+	loadAvg, _ := vchiq.GetLoadAverage()
+	fqdn, _ := vchiq.GetFQDN()
+
+	var ips []string
+	netIPs, _ := vchiq.GetIPs()
+	for _, ip := range netIPs {
+		ips = append(ips, ip.String())
+	}
+
+	return &OSInfoResponse{
+		Hostname:      hostname,
+		OSName:        osName,
+		KernelVersion: kernel,
+		Uptime:        uptime,
+		LoadAverage:   loadAvg,
+		FQDN:          fqdn,
+		IPs:           ips,
+	}, nil
+}
+
+// ModelResponse is the response for device.model.
+type ModelResponse struct {
+	DeviceName         string  `json:"device_name"`
+	Revision           string  `json:"revision"`
+	MinimalPowerSupply float64 `json:"minimal_power_supply_amps"`
+	VcgencmdInstalled  bool    `json:"vcgencmd_installed"`
+}
+
+func (s *Service) HandleModel(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	deviceName, err := vchiq.GetDeviceName()
+	if err != nil {
+		return nil, fmt.Errorf("get device name: %w", err)
+	}
+	revision, _ := vchiq.GetCPURevision()
+	power, _ := vchiq.GetMinimalPowerSupply(deviceName)
+	return &ModelResponse{
+		DeviceName:         deviceName,
+		Revision:           revision,
+		MinimalPowerSupply: power,
+		VcgencmdInstalled:  vchiq.IsVcgencmdInstalled(),
+	}, nil
 }

@@ -88,7 +88,6 @@ class DiscoveryViewModel
     }
 
     override fun onCleared() {
-        super.onCleared()
         viewModelScope.launch {
             deviceRepository.stopDiscovery()
         }

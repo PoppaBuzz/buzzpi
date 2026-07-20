@@ -17,8 +17,8 @@ import com.jphat.buzzpi.data.bpp.ConnectionState
 @Composable
 fun ConnectionIndicator(
     state: ConnectionState,
-    size: Dp = 10.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    size: Dp = 10.dp
 ) {
     val color by animateColorAsState(
         targetValue = when (state) {

@@ -202,7 +202,6 @@ class ScreenViewerViewModel
     }
 
     override fun onCleared() {
-        super.onCleared()
         streamJob?.cancel()
         viewModelScope.launch {
             bppClient.disconnect()

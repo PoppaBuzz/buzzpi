@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -19,6 +20,9 @@ type Session struct {
 	closed    bool
 	rows      uint16
 	cols      uint16
+	mu        sync.Mutex       // protects pty reads, writes, and closed
+	done      chan struct{}     // closed when session closes
+	sender    func([]byte) error // push output to client (nil if no client)
 }
 
 // process is the interface for the underlying OS process.

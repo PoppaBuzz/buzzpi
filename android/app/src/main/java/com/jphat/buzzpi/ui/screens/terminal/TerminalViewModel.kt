@@ -163,7 +163,6 @@ class TerminalViewModel
     }
 
     override fun onCleared() {
-        super.onCleared()
         terminalJob?.cancel()
         viewModelScope.launch {
             deviceRepository.disconnectTerminal(deviceId)

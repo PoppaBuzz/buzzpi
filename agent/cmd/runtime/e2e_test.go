@@ -106,7 +106,7 @@ func TestE2E_FullStack(t *testing.T) {
 	// Device service
 	cfg, _ := config.Load("")
 	cfg.Runtime.DeviceName = "e2e-test-device"
-	devSvc, err := device.NewService(cfg, devID.DeviceID, logger)
+	devSvc, err := device.NewService(cfg, "", devID.DeviceID, logger)
 	if err != nil {
 		t.Fatalf("new device service: %v", err)
 	}

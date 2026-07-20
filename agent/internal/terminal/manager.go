@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -16,6 +15,10 @@ type Manager struct {
 	logger   *slog.Logger
 	sessions sync.Map
 }
+
+type senderKeyType struct{}
+
+var SenderKey = senderKeyType{}
 
 // NewManager creates a new terminal session manager.
 func NewManager(logger *slog.Logger) *Manager {
@@ -122,6 +125,8 @@ func (m *Manager) Health() interface{} {
 func (m *Manager) HandleOpen(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req struct {
 		Shell string `json:"shell,omitempty"`
+		Cols  int    `json:"cols,omitempty"`
+		Rows  int    `json:"rows,omitempty"`
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
@@ -132,6 +137,16 @@ func (m *Manager) HandleOpen(ctx context.Context, params json.RawMessage) (inter
 		return nil, fmt.Errorf("open terminal: %w", err)
 	}
 
+	if req.Cols > 0 && req.Rows > 0 {
+		if err := s.Resize(uint16(req.Rows), uint16(req.Cols)); err != nil {
+			m.logger.Warn("failed to apply initial terminal size", "error", err)
+		}
+	}
+
+	if sender, ok := ctx.Value(SenderKey).(func([]byte) error); ok && sender != nil {
+		s.StartOutputLoop(sender)
+	}
+
 	return map[string]interface{}{
 		"session_id": s.ID,
 		"created_at": s.CreatedAt,
@@ -139,7 +154,6 @@ func (m *Manager) HandleOpen(ctx context.Context, params json.RawMessage) (inter
 }
 
 // HandleInput is the BPP handler for terminal.input.
-// Writes input data to the PTY and returns any available output.
 func (m *Manager) HandleInput(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID string `json:"session_id"`
@@ -158,17 +172,8 @@ func (m *Manager) HandleInput(ctx context.Context, params json.RawMessage) (inte
 		return nil, fmt.Errorf("write: %w", err)
 	}
 
-	output, err := s.ReadOutput(200 * time.Millisecond)
-	if err != nil {
-		m.logger.Warn("read output after input", "error", err, "session", req.SessionID)
-	}
-
-	if output == nil {
-		output = []byte{}
-	}
-
 	return map[string]interface{}{
-		"output": string(output),
+		"ok": true,
 	}, nil
 }
 
@@ -181,6 +186,10 @@ func (m *Manager) HandleResize(ctx context.Context, params json.RawMessage) (int
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
+	}
+
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
 	}
 
 	s, ok := m.Get(req.SessionID)
@@ -205,6 +214,10 @@ func (m *Manager) HandleClose(ctx context.Context, params json.RawMessage) (inte
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
+	}
+
+	if req.SessionID == "" {
+		return nil, fmt.Errorf("session_id is required")
 	}
 
 	if err := m.Close(req.SessionID); err != nil {

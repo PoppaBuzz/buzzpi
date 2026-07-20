@@ -116,6 +116,14 @@ func main() {
 	eng.RegisterMethod("device.info", devSvc.HandleInfo)
 	eng.RegisterMethod("device.stats", devSvc.HandleStats)
 	eng.RegisterMethod("device.rename", devSvc.HandleRename)
+	eng.RegisterMethod("device.cpu", devSvc.HandleCPU)
+	eng.RegisterMethod("device.throttling", devSvc.HandleThrottling)
+	eng.RegisterMethod("device.gpu", devSvc.HandleGPU)
+	eng.RegisterMethod("device.voltage", devSvc.HandleVoltage)
+	eng.RegisterMethod("device.processes", devSvc.HandleProcesses)
+	eng.RegisterMethod("device.usb", devSvc.HandleUSB)
+	eng.RegisterMethod("device.os", devSvc.HandleOS)
+	eng.RegisterMethod("device.model", devSvc.HandleModel)
 
 	pairH := pairing.NewHandler(store, devID.DeviceID, logger)
 	eng.RegisterMethod("pair.initiate", pairH.HandleInitiate)
@@ -280,6 +288,14 @@ func (h *bppWebSocketHandler) HandleMessage(ctx context.Context, data []byte) ([
 
 	ctx = context.WithValue(ctx, engine.CtxSessionToken, session)
 	ctx = context.WithValue(ctx, engine.CtxClientID, clientID)
+
+	conn, _ := ctx.Value(ws.ContextKeyConn).(*ws.Connection)
+	if conn != nil {
+		sender := func(data []byte) error {
+			return conn.Send(data)
+		}
+		ctx = context.WithValue(ctx, terminal.SenderKey, sender)
+	}
 
 	resp, err := h.engine.Handle(ctx, env)
 	if err != nil {
