@@ -16,7 +16,7 @@ func resizePTY(f ptyFile, rows, cols uint16) error {
 }
 
 // Create returns ErrUnsupported on Windows.
-func Create(id, shell string) (*Session, error) {
+func Create(id, shell string, timeout time.Duration) (*Session, error) {
 	return nil, ErrUnsupported
 }
 

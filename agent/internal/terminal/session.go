@@ -23,6 +23,10 @@ type Session struct {
 	mu        sync.Mutex       // protects pty reads, writes, and closed
 	done      chan struct{}     // closed when session closes
 	sender    func([]byte) error // push output to client (nil if no client)
+
+	// Inactivity tracking
+	lastActivity      time.Time     // last time session received input or output
+	inactivityTimeout time.Duration // max idle duration before auto-close (0 = disabled)
 }
 
 // process is the interface for the underlying OS process.

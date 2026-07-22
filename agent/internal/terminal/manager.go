@@ -6,14 +6,18 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
 
+const DefaultInactivityTimeout = 5 * time.Minute
+
 // Manager manages multiple PTY terminal sessions.
 type Manager struct {
-	logger   *slog.Logger
-	sessions sync.Map
+	logger             *slog.Logger
+	sessions           sync.Map
+	inactivityTimeout  time.Duration
 }
 
 type senderKeyType struct{}
@@ -26,7 +30,8 @@ func NewManager(logger *slog.Logger) *Manager {
 		logger = slog.Default()
 	}
 	return &Manager{
-		logger: logger.With("component", "terminal"),
+		logger:            logger.With("component", "terminal"),
+		inactivityTimeout: DefaultInactivityTimeout,
 	}
 }
 
@@ -35,7 +40,7 @@ func NewManager(logger *slog.Logger) *Manager {
 // Returns the session and the generated session ID.
 func (m *Manager) Open(shell string) (*Session, error) {
 	id := "term_" + uuid.New().String()[:12]
-	s, err := Create(id, shell)
+	s, err := Create(id, shell, m.inactivityTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("create terminal: %w", err)
 	}
@@ -119,6 +124,34 @@ func (m *Manager) Health() interface{} {
 		"status":   "ok",
 		"sessions": m.Count(),
 	}
+}
+
+// SetInactivityTimeout configures the idle timeout for new sessions.
+func (m *Manager) SetInactivityTimeout(d time.Duration) {
+	m.inactivityTimeout = d
+}
+
+// CloseIdle closes sessions that have exceeded the inactivity timeout.
+// Returns the number of sessions closed.
+func (m *Manager) CloseIdle() int {
+	var closed int
+	now := time.Now()
+	m.sessions.Range(func(key, value interface{}) bool {
+		id := key.(string)
+		s := value.(*Session)
+		s.mu.Lock()
+		idle := now.Sub(s.lastActivity)
+		timeout := s.inactivityTimeout
+		s.mu.Unlock()
+
+		if timeout > 0 && idle >= timeout {
+			m.Close(id)
+			closed++
+			m.logger.Info("closed idle terminal session", "id", id, "idle", idle)
+		}
+		return true
+	})
+	return closed
 }
 
 // HandleOpen is the BPP handler for terminal.open.

@@ -64,21 +64,31 @@ func defaultShell() string {
 }
 
 // Create starts a new PTY terminal session.
-func Create(id, shell string) (*Session, error) {
+// timeout sets the inactivity timeout; 0 disables auto-close.
+func Create(id, shell string, timeout time.Duration) (*Session, error) {
 	cmd, f, err := startPTY(shell)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Session{
-		ID:        id,
-		CreatedAt: time.Now(),
-		cmd:       cmd,
-		pty:       f,
-		rows:      24,
-		cols:      80,
-		done:      make(chan struct{}),
-	}, nil
+	now := time.Now()
+	s := &Session{
+		ID:                id,
+		CreatedAt:         now,
+		cmd:               cmd,
+		pty:               f,
+		rows:              24,
+		cols:              80,
+		done:              make(chan struct{}),
+		lastActivity:      now,
+		inactivityTimeout: timeout,
+	}
+
+	if timeout > 0 {
+		s.startIdleChecker()
+	}
+
+	return s, nil
 }
 
 // Read reads output from the PTY (blocking).
@@ -89,6 +99,7 @@ func (s *Session) Read() ([]byte, error) {
 	buf := make([]byte, 4096)
 	n, err := s.pty.Read(buf)
 	if n > 0 {
+		s.touchActivity()
 		return buf[:n], err
 	}
 	return nil, err
@@ -113,6 +124,7 @@ func (s *Session) ReadOutput(timeout time.Duration) ([]byte, error) {
 	buf := make([]byte, 4096)
 	n, err := f.Read(buf)
 	if n > 0 {
+		s.touchActivity()
 		return buf[:n], nil
 	}
 	if os.IsTimeout(err) {
@@ -128,7 +140,11 @@ func (s *Session) Write(data []byte) (int, error) {
 	if s.closed {
 		return 0, fmt.Errorf("session closed")
 	}
-	return s.pty.Write(data)
+	n, err := s.pty.Write(data)
+	if n > 0 {
+		s.touchActivity()
+	}
+	return n, err
 }
 
 // Resize sets the PTY terminal dimensions.
@@ -219,4 +235,35 @@ func (s *Session) StartOutputLoop(sender func([]byte) error) {
 // Wait blocks until the process exits.
 func (s *Session) Wait() error {
 	return s.cmd.Wait()
+}
+
+func (s *Session) startIdleChecker() {
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-s.done:
+				return
+			case <-ticker.C:
+				s.mu.Lock()
+				if s.closed {
+					s.mu.Unlock()
+					return
+				}
+				idle := time.Since(s.lastActivity)
+				if idle >= s.inactivityTimeout {
+					s.mu.Unlock()
+					s.Close()
+					return
+				}
+				s.mu.Unlock()
+			}
+		}
+	}()
+}
+
+func (s *Session) touchActivity() {
+	s.lastActivity = time.Now()
 }

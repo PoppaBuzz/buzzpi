@@ -90,7 +90,6 @@ fun TerminalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .imePadding()
         ) {
             // Terminal output area
             Box(
@@ -114,9 +113,17 @@ fun TerminalScreen(
                             modifier = Modifier.padding(top = 12.dp)
                         )
                     }
+                } else if (uiState.error != null) {
+                    Text(
+                        text = uiState.error ?: "Connection failed",
+                        color = Color(0xFFF87171),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(16.dp)
+                    )
                 } else if (uiState.terminalState.lines.isEmpty()) {
                     Text(
-                        text = "Connecting to terminal...",
+                        text = "Terminal connected.\nType below to begin.",
                         color = Color(0xFF8B949E),
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -137,13 +144,13 @@ fun TerminalScreen(
                 }
             }
 
-            // Input bar
             TerminalInputBar(
                 input = uiState.inputBuffer,
                 onInputChange = { viewModel.updateInputBuffer(it) },
                 onSend = { viewModel.sendInput(it) },
                 onSendKey = { viewModel.sendSpecialKey(it) },
-                isConnected = uiState.isConnected
+                isConnected = uiState.isConnected,
+                modifier = Modifier.imePadding()
             )
         }
     }
