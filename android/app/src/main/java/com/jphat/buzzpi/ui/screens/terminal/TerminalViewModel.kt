@@ -6,6 +6,8 @@ import android.os.PowerManager
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jphat.buzzpi.data.bpp.BppClient
+import com.jphat.buzzpi.data.bpp.ConnectionState
 import com.jphat.buzzpi.domain.model.Dimensions
 import com.jphat.buzzpi.domain.model.TerminalInput
 import com.jphat.buzzpi.domain.model.TerminalState
@@ -35,6 +37,7 @@ class TerminalViewModel
 @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val deviceRepository: DeviceRepository,
+    private val bppClient: BppClient,
     private val application: Application
 ) : ViewModel() {
 
@@ -43,6 +46,7 @@ class TerminalViewModel
     val uiState: StateFlow<TerminalUiState> = _uiState.asStateFlow()
     private var terminalJob: Job? = null
     private var idleWatchJob: Job? = null
+    private var wsWatchJob: Job? = null
     private val history = mutableListOf<String>()
     private var historyIndex = -1
 
@@ -56,6 +60,25 @@ class TerminalViewModel
 
     init {
         connectTerminal()
+        startWsWatch()
+    }
+
+    private fun startWsWatch() {
+        wsWatchJob = viewModelScope.launch {
+            bppClient.connectionState.collect { state ->
+                if (_uiState.value.isConnected &&
+                    (state == ConnectionState.DISCONNECTED || state == ConnectionState.ERROR)
+                ) {
+                    _uiState.value = _uiState.value.copy(
+                        isConnected = false,
+                        isConnecting = false,
+                        error = "WebSocket disconnected — tap reconnect"
+                    )
+                    releaseWakeLock()
+                    terminalJob?.cancel()
+                }
+            }
+        }
     }
 
     private fun connectTerminal() {
@@ -219,6 +242,7 @@ class TerminalViewModel
     override fun onCleared() {
         terminalJob?.cancel()
         idleWatchJob?.cancel()
+        wsWatchJob?.cancel()
         releaseWakeLock()
         viewModelScope.launch {
             deviceRepository.disconnectTerminal(deviceId)

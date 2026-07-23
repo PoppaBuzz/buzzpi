@@ -18,6 +18,7 @@ type Manager struct {
 	logger             *slog.Logger
 	sessions           sync.Map
 	inactivityTimeout  time.Duration
+	stopIdleReaper     chan struct{}
 }
 
 type senderKeyType struct{}
@@ -105,14 +106,32 @@ func (m *Manager) Count() int {
 // Name returns the component name for the Supervisor.
 func (m *Manager) Name() string { return "terminal" }
 
-// Start is a no-op for the Supervisor — terminal sessions are created on demand.
+// Start begins periodic reaping of idle terminal sessions.
 func (m *Manager) Start(ctx context.Context) error {
+	m.stopIdleReaper = make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-m.stopIdleReaper:
+				return
+			case <-ticker.C:
+				if closed := m.CloseIdle(); closed > 0 {
+					m.logger.Info("reaped idle terminal sessions", "count", closed)
+				}
+			}
+		}
+	}()
 	m.logger.Info("terminal manager ready")
 	return nil
 }
 
 // Stop terminates all active sessions for the Supervisor.
 func (m *Manager) Stop(ctx context.Context) error {
+	close(m.stopIdleReaper)
 	m.CloseAll()
 	m.logger.Info("terminal manager stopped")
 	return nil

@@ -177,6 +177,23 @@ func (s *Session) Close() error {
 func (s *Session) StartOutputLoop(sender func([]byte) error) {
 	s.sender = sender
 	go func() {
+		defer func() {
+			eventParams := map[string]interface{}{
+				"session_id": s.ID,
+			}
+			paramsJSON, _ := json.Marshal(eventParams)
+			event := map[string]interface{}{
+				"v":      1,
+				"id":     "evt_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+				"ts":     time.Now().UTC().Format(time.RFC3339),
+				"type":   "event",
+				"method": "terminal.closed",
+				"params": json.RawMessage(paramsJSON),
+			}
+			data, _ := json.Marshal(event)
+			sender(data) // ignore error — connection may already be gone
+		}()
+
 		buf := make([]byte, 4096)
 		for {
 			select {
